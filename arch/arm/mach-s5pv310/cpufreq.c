@@ -1293,8 +1293,6 @@ static int s5pv310_target(struct cpufreq_policy *policy,
 	unsigned int int_volt;
 #endif
 
-	unsigned int check_gov = 0;
-
 	mutex_lock(&set_cpu_freq_change);
 
 	if ((relation & ENABLE_FURTHER_CPUFREQ) &&
@@ -1311,7 +1309,6 @@ static int s5pv310_target(struct cpufreq_policy *policy,
 	 * If we're going to suspend disable further cpu frequency changes
 	 * (800MHz sleep death fix).
 	 */
-	check_gov = 1;
 	if (relation & ENABLE_FURTHER_CPUFREQ)
 		s5pv310_dvs_locking = 0;
 
@@ -1337,10 +1334,10 @@ static int s5pv310_target(struct cpufreq_policy *policy,
 		goto cpufreq_out;
 	}
 
-	if ((index > g_cpufreq_lock_level) && check_gov)
+	if ((index > g_cpufreq_lock_level))
 		index = g_cpufreq_lock_level;
 
-	if ((index < g_cpufreq_limit_level) && check_gov)
+	if ((index < g_cpufreq_limit_level))
 		index = g_cpufreq_limit_level;
 
 	target_index = index;
@@ -1394,7 +1391,8 @@ static int s5pv310_target(struct cpufreq_policy *policy,
 	if (index != target_index) {
 		target_freq_smooth = target_freq;
 		schedule_delayed_work_on(0, &smooth_freq_work, HZ >> 1);
-	}
+	} else
+		target_freq_smooth = 0;
 
 	/* If the new frequency is same with previous frequency, skip */
 	if (freqs.new == freqs.old)
@@ -1949,6 +1947,7 @@ out:
 
 static struct notifier_block s5pv310_cpufreq_notifier = {
 	.notifier_call = s5pv310_cpufreq_notifier_event,
+	.priority = INT_MIN, /* done last */
 };
 
 static int s5pv310_cpufreq_reboot_notifier_call(struct notifier_block *this,

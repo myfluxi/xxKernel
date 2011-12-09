@@ -6268,6 +6268,8 @@ static void __init smdkc210_machine_init(void)
 	s3c_usb_set_serial();
 /* Changes value of nluns in order to use external storage */
 	usb_device_init();
+#else
+    s3c_usb_otg_composite_pdata(&fb_platform_data);
 #endif
 
 /* klaatu: semaphore logging code - for debug  */

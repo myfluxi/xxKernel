@@ -356,7 +356,7 @@ int s5pv310_get_max_speed(void)
 				break;
 			case 1:
 			case 7:
-				max_speed = 1200000;
+				max_speed = 1600000;
 				break;
 			case 0:
 			case 3:

@@ -1095,8 +1095,10 @@ static void drain_pages(unsigned int cpu)
 		pset = per_cpu_ptr(zone->pageset, cpu);
 
 		pcp = &pset->pcp;
-		free_pcppages_bulk(zone, pcp->count, pcp);
-		pcp->count = 0;
+		if (pcp->count) {
+			free_pcppages_bulk(zone, pcp->count, pcp);
+			pcp->count = 0;
+		}
 		local_irq_restore(flags);
 	}
 }
@@ -2593,9 +2595,16 @@ static int __parse_numa_zonelist_order(char *s)
 
 static __init int setup_numa_zonelist_order(char *s)
 {
-	if (s)
-		return __parse_numa_zonelist_order(s);
-	return 0;
+	int ret;
+	
+	if (!s)
+		return 0;
+		
+	ret = __parse_numa_zonelist_order(s);
+	if (ret == 0)
+		strlcpy(numa_zonelist_order, s, NUMA_ZONELIST_ORDER_LEN);
+		
+	return ret;
 }
 early_param("numa_zonelist_order", setup_numa_zonelist_order);
 

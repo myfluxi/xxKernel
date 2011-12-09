@@ -1527,25 +1527,12 @@ fail:
 	return NULL;
 }
 
-void *__vmalloc_area(struct vm_struct *area, gfp_t gfp_mask, pgprot_t prot)
-{
-	void *addr = __vmalloc_area_node(area, gfp_mask, prot, -1,
-					 __builtin_return_address(0));
-
-	/*
-	 * A ref_count = 3 is needed because the vm_struct and vmap_area
-	 * structures allocated in the __get_vm_area_node() function contain
-	 * references to the virtual address of the vmalloc'ed block.
-	 */
-	kmemleak_alloc(addr, area->size - PAGE_SIZE, 3, gfp_mask);
-
-	return addr;
-}
-
 /**
- *	__vmalloc_node  -  allocate virtually contiguous memory
+ *	__vmalloc_node_range  -  allocate virtually contiguous memory
  *	@size:		allocation size
  *	@align:		desired alignment
+ * 	@start:    vm area range start
+ * 	@end:    vm area range end
  *	@gfp_mask:	flags for the page level allocator
  *	@prot:		protection mask for the allocated pages
  *	@node:		node to use for allocation or -1
@@ -1555,9 +1542,9 @@ void *__vmalloc_area(struct vm_struct *area, gfp_t gfp_mask, pgprot_t prot)
  *	allocator with @gfp_mask flags.  Map them into contiguous
  *	kernel virtual space, using a pagetable protection of @prot.
  */
-static void *__vmalloc_node(unsigned long size, unsigned long align,
-			    gfp_t gfp_mask, pgprot_t prot,
-			    int node, void *caller)
+void *__vmalloc_node_range(unsigned long size, unsigned long align,
+			    unsigned long start, unsigned long end, gfp_t gfp_mask,
+			    pgprot_t prot, int node, void *caller)
 {
 	struct vm_struct *area;
 	void *addr;
@@ -1567,8 +1554,8 @@ static void *__vmalloc_node(unsigned long size, unsigned long align,
 	if (!size || (size >> PAGE_SHIFT) > totalram_pages)
 		return NULL;
 
-	area = __get_vm_area_node(size, align, VM_ALLOC, VMALLOC_START,
-				  VMALLOC_END, node, gfp_mask, caller);
+	area = __get_vm_area_node(size, align, VM_ALLOC, start, end, node,
+				  gfp_mask, caller);
 
 	if (!area)
 		return NULL;
@@ -1583,6 +1570,27 @@ static void *__vmalloc_node(unsigned long size, unsigned long align,
 	kmemleak_alloc(addr, real_size, 3, gfp_mask);
 
 	return addr;
+}
+
+/**
+ * 	__vmalloc_node  -  allocate virtually contiguous memory
+ * 	@size:    allocation size
+ * 	@align:    desired alignment
+ * 	@gfp_mask:  flags for the page level allocator
+ * 	@prot:    protection mask for the allocated pages
+ * 	@node:    node to use for allocation or -1
+ * 	@caller:  caller's return address
+ * 
+ * 	Allocate enough pages to cover @size from the page level
+ * 	allocator with @gfp_mask flags.  Map them into contiguous
+ * 	kernel virtual space, using a pagetable protection of @prot.
+ */
+static void *__vmalloc_node(unsigned long size, unsigned long align,
+				gfp_t gfp_mask, pgprot_t prot,
+				int node, void *caller)
+{
+	return __vmalloc_node_range(size, align, VMALLOC_START, VMALLOC_END,
+				gfp_mask, prot, node, caller);
 }
 
 void *__vmalloc(unsigned long size, gfp_t gfp_mask, pgprot_t prot)
@@ -2150,17 +2158,16 @@ static unsigned long pvm_determine_end(struct vmap_area **pnext,
  * @sizes: array containing size of each area
  * @nr_vms: the number of areas to allocate
  * @align: alignment, all entries in @offsets and @sizes must be aligned to this
- * @gfp_mask: allocation mask
  *
  * Returns: kmalloc'd vm_struct pointer array pointing to allocated
  *	    vm_structs on success, %NULL on failure
  *
  * Percpu allocator wants to use congruent vm areas so that it can
  * maintain the offsets among percpu areas.  This function allocates
- * congruent vmalloc areas for it.  These areas tend to be scattered
- * pretty far, distance between two areas easily going up to
- * gigabytes.  To avoid interacting with regular vmallocs, these areas
- * are allocated from top.
+ * congruent vmalloc areas for it with GFP_KERNEL.  These areas tend to
+ * be scattered pretty far, distance between two areas easily going up
+ * to gigabytes.  To avoid interacting with regular vmallocs, these
+ * areas are allocated from top.
  *
  * Despite its complicated look, this allocator is rather simple.  It
  * does everything top-down and scans areas from the end looking for
@@ -2171,7 +2178,7 @@ static unsigned long pvm_determine_end(struct vmap_area **pnext,
  */
 struct vm_struct **pcpu_get_vm_areas(const unsigned long *offsets,
 				     const size_t *sizes, int nr_vms,
-				     size_t align, gfp_t gfp_mask)
+				     size_t align)
 {
 	const unsigned long vmalloc_start = ALIGN(VMALLOC_START, align);
 	const unsigned long vmalloc_end = VMALLOC_END & ~(align - 1);
@@ -2180,8 +2187,6 @@ struct vm_struct **pcpu_get_vm_areas(const unsigned long *offsets,
 	int area, area2, last_area, term_area;
 	unsigned long base, start, end, last_end;
 	bool purged = false;
-
-	gfp_mask &= GFP_RECLAIM_MASK;
 
 	/* verify parameters and allocate data structures */
 	BUG_ON(align & ~PAGE_MASK || !is_power_of_2(align));
@@ -2215,14 +2220,14 @@ struct vm_struct **pcpu_get_vm_areas(const unsigned long *offsets,
 		return NULL;
 	}
 
-	vms = kzalloc(sizeof(vms[0]) * nr_vms, gfp_mask);
-	vas = kzalloc(sizeof(vas[0]) * nr_vms, gfp_mask);
+	vms = kzalloc(sizeof(vms[0]) * nr_vms, GFP_KERNEL);
+	vas = kzalloc(sizeof(vas[0]) * nr_vms, GFP_KERNEL);
 	if (!vas || !vms)
 		goto err_free;
 
 	for (area = 0; area < nr_vms; area++) {
-		vas[area] = kzalloc(sizeof(struct vmap_area), gfp_mask);
-		vms[area] = kzalloc(sizeof(struct vm_struct), gfp_mask);
+		vas[area] = kzalloc(sizeof(struct vmap_area), GFP_KERNEL);
+		vms[area] = kzalloc(sizeof(struct vm_struct), GFP_KERNEL);
 		if (!vas[area] || !vms[area])
 			goto err_free;
 	}
@@ -2400,13 +2405,8 @@ static int s_show(struct seq_file *m, void *p)
 	seq_printf(m, "0x%p-0x%p %7ld",
 		v->addr, v->addr + v->size, v->size);
 
-	if (v->caller) {
-		char buff[KSYM_SYMBOL_LEN];
-
-		seq_putc(m, ' ');
-		sprint_symbol(buff, (unsigned long)v->caller);
-		seq_puts(m, buff);
-	}
+	if (v->caller)
+		seq_printf(m, " %pS", v->caller);
 
 	if (v->nr_pages)
 		seq_printf(m, " pages=%d", v->nr_pages);

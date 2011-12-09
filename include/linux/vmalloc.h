@@ -57,8 +57,9 @@ extern void *vmalloc_exec(unsigned long size);
 extern void *vmalloc_32(unsigned long size);
 extern void *vmalloc_32_user(unsigned long size);
 extern void *__vmalloc(unsigned long size, gfp_t gfp_mask, pgprot_t prot);
-extern void *__vmalloc_area(struct vm_struct *area, gfp_t gfp_mask,
-				pgprot_t prot);
+extern void *__vmalloc_node_range(unsigned long size, unsigned long align,
+			unsigned long start, unsigned long end, gfp_t gfp_mask,
+			pgprot_t prot, int node, void *caller);
 extern void vfree(const void *addr);
 
 extern void *vmap(struct page **pages, unsigned int count,
@@ -117,7 +118,7 @@ extern __init void vm_area_register_early(struct vm_struct *vm, size_t align);
 
 struct vm_struct **pcpu_get_vm_areas(const unsigned long *offsets,
 				     const size_t *sizes, int nr_vms,
-				     size_t align, gfp_t gfp_mask);
+				     size_t align);
 
 void pcpu_free_vm_areas(struct vm_struct **vms, int nr_vms);
 

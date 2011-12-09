@@ -44,6 +44,8 @@ int exp_UV_mV[8] = {
 	950000,  // 100Mhz
 };
 
+#define SUSPEND_MAX_FREQUENCY   500000 /* 500 Mhz */
+
 /**
  * The "cpufreq driver" - the arch- or hardware-dependent low
  * level driver of CPUFreq support, and its spinlock. This lock
@@ -705,6 +707,50 @@ static ssize_t store_UV_mV_table(struct cpufreq_policy *policy,
               }
               return count;
 }
+
+static unsigned int suspend_freq = SUSPEND_MAX_FREQUENCY;
+
+static ssize_t show_suspend_max_freq(struct cpufreq_policy *policy, char *buf)
+{
+    return sprintf(buf, "%d\n", suspend_freq);
+}
+
+static ssize_t store_suspend_max_freq(struct cpufreq_policy *policy,
+                                      const char *buf, size_t count)
+{
+	int ret;
+  
+	ret = sscanf(buf, "%d", &suspend_freq);
+	
+	if (ret != 1) {
+		return -EINVAL;
+	} 
+	else
+	{
+		/* Correct bad user input */
+		if (suspend_freq <= 1600)
+		{
+			suspend_freq = suspend_freq * 1000;
+		}
+		/* Static safe range is sufficient */      
+		if (suspend_freq < 100000)
+		{
+			suspend_freq = 100000;
+		}
+		else if (suspend_freq > 1200000)
+		{
+			suspend_freq = 1200000;
+		}
+		
+
+		printk(KERN_INFO
+          		"New maximum suspend frequency: %d KHz\n", suspend_freq);
+
+		return count;
+	}
+
+}  
+
 /**
  * show_scaling_driver - show the current cpufreq HW/BIOS limitation
  */
@@ -736,6 +782,7 @@ cpufreq_freq_attr_rw(scaling_governor);
 cpufreq_freq_attr_rw(scaling_setspeed);
 /* UV table */
 cpufreq_freq_attr_rw(UV_mV_table);
+cpufreq_freq_attr_rw(suspend_max_freq);
 
 static struct attribute *default_attrs[] = {
 	&cpuinfo_min_freq.attr,
@@ -750,6 +797,7 @@ static struct attribute *default_attrs[] = {
 	&scaling_available_governors.attr,
 	&scaling_setspeed.attr,
 	&UV_mV_table.attr,
+	&suspend_max_freq.attr,
 	NULL
 };
 
@@ -2074,21 +2122,6 @@ int cpufreq_unregister_driver(struct cpufreq_driver *driver)
 }
 EXPORT_SYMBOL_GPL(cpufreq_unregister_driver);
 
-static unsigned int
-evaluate_cpu_freq(struct cpufreq_policy *policy, unsigned int base)
-{
-	struct cpufreq_frequency_table *freq_table;
-	unsigned int index = 0;
-
-	freq_table = cpufreq_frequency_get_table(policy->cpu);
-	if (unlikely(!freq_table))
-		return 0;
-	cpufreq_frequency_table_target(policy, freq_table, base,
-			CPUFREQ_RELATION_H, &index);
-
-	return freq_table[index].frequency;
-}
-
 static void powersave_early_suspend(struct early_suspend *handler)
 {
 	int cpu;
@@ -2101,8 +2134,7 @@ static void powersave_early_suspend(struct early_suspend *handler)
 			continue;
 		if (cpufreq_get_policy(&new_policy, cpu))
 			goto out;
-		new_policy.max = evaluate_cpu_freq(cpu_policy,
-					cpu_policy->cpuinfo.max_freq >> 1);
+		new_policy.max = suspend_freq;
 		new_policy.min = cpu_policy->cpuinfo.min_freq;
 		printk(KERN_INFO
 			"%s: set cpu%d freq in the %u-%u KHz range\n",

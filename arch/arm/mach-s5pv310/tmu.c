@@ -38,8 +38,8 @@
 #undef CONFIG_TMU_DEBUG_ENABLE
 
 /* Selectable one room temperature among 3 kinds */
-#undef  OPERATION_TEMP_BASE_78
-#define OPERATION_TEMP_BASE_61
+#undef  OPERATION_TEMP_BASE_61
+#define OPERATION_TEMP_BASE_78 /* Correct settings for alternative freq tables */
 
 #define TIMMING_AREF 0x30
 #define AUTO_REFRESH_PERIOD_TQ0		0x2E /* auto refresh preiod 1.95us */

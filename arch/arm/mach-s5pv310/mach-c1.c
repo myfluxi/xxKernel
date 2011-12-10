@@ -6425,7 +6425,7 @@ static void __init s5pv310_reserve(void)
 }
 #endif
 
-MACHINE_START(C1, "SMDKV210")
+MACHINE_START(C1, "SMDKV310")
 	/* Maintainer: Kukjin Kim <kgene.kim@samsung.com> */
 	.phys_io	= S3C_PA_UART & 0xfff00000,
 	.io_pg_offst	= (((u32)S3C_VA_UART) >> 18) & 0xfffc,
@@ -6436,7 +6436,7 @@ MACHINE_START(C1, "SMDKV210")
 	.timer		= &s5pv310_timer,
 MACHINE_END
 
-MACHINE_START(SMDKC210, "SMDKV210")
+MACHINE_START(SMDKC210, "SMDKV310")
 	/* Maintainer: Kukjin Kim <kgene.kim@samsung.com> */
 	.phys_io	= S3C_PA_UART & 0xfff00000,
 	.io_pg_offst	= (((u32)S3C_VA_UART) >> 18) & 0xfffc,

@@ -539,6 +539,12 @@ menu "BUS Frequency and Voltage scaling (Experimental)"
 	default n
 	help
 	  Bus frequency and voltage scaling support.
+
+	config MACH_C1_UNDERVOLT
+	bool "MACH-C1 undervolting"
+	default n
+	help
+	  Enables LCD, LED, Bus and Memory Frequency undervolting. Use with caution!
 endmenu
 
 menu "CPUFreq step up sequence selection: 2 step or 3 step"

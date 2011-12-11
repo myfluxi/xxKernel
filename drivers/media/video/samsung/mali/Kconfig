@@ -60,3 +60,10 @@ config GPU_CLOCK_CONTROL
 	default y
 	help
 	 This enables a sysfs interface to control gpu clock speeds.
+
+config GPU_UNDERVOLTING
+	bool "Set lower GPU speed and voltage"
+	depends on VIDEO_MALI400MP
+	default y
+	help
+	 This enables a lower default 2D speed and voltage level.

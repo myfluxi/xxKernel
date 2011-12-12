@@ -724,7 +724,7 @@ static ssize_t store_suspend_max_freq(struct cpufreq_policy *policy,
 	
 	if (ret != 1) {
 		return -EINVAL;
-	} 
+	}
 	else
 	{
 		/* Correct bad user input */
@@ -732,7 +732,7 @@ static ssize_t store_suspend_max_freq(struct cpufreq_policy *policy,
 		{
 			suspend_freq = suspend_freq * 1000;
 		}
-		/* Static safe range is sufficient */      
+		/* Static safe range is sufficient */
 		if (suspend_freq < 100000)
 		{
 			suspend_freq = 100000;
@@ -741,14 +741,12 @@ static ssize_t store_suspend_max_freq(struct cpufreq_policy *policy,
 		{
 			suspend_freq = 1200000;
 		}
-		
 
 		printk(KERN_INFO
           		"New maximum suspend frequency: %d KHz\n", suspend_freq);
 
 		return count;
 	}
-
 }  
 
 /**

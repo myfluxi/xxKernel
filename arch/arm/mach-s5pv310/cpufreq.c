@@ -1378,12 +1378,10 @@ static int s5pv310_target(struct cpufreq_policy *policy,
 		if (old_index > L5)
 			old_index = L5;
 	}
-/* prevent freqs going above max policy - netarchy */
-//	if (s5pv310_freq_table[index].frequency > policy->max) {
+		/* prevent freqs going above max policy - netarchy */
 		while (s5pv310_freq_table[index].frequency > policy->max) {
 			index += 1;
 		}
-//	}
 
 	freqs.new = s5pv310_freq_table[index].frequency;
 	freqs.cpu = policy->cpu;
@@ -1403,7 +1401,6 @@ static int s5pv310_target(struct cpufreq_policy *policy,
 #endif
 
 	/* get the voltage value */
-//	arm_volt = s5pv310_volt_table[index].arm_volt;
 	arm_volt = exp_UV_mV[index];
 #ifndef CONFIG_S5PV310_BUSFREQ
 	int_volt = s5pv310_volt_table[index].int_volt;
@@ -1902,7 +1899,6 @@ static int s5pv310_cpufreq_notifier_event(struct notifier_block *this,
 {
 	static int max, min;
 	struct cpufreq_policy *policy = cpufreq_cpu_get(0);
-	unsigned int cpu = 0;
  	int ret = 0;
 
 	switch (event) {
@@ -2546,7 +2542,6 @@ static void s5pv310_asv_set_voltage(void)
 	if (s5pv310_max_armclk != ARMCLOCK_1600MHZ)
 		asv_arm_index -= 1;
 
-//	asv_arm_volt = s5pv310_volt_table[asv_arm_index].arm_volt;
 	asv_arm_volt = exp_UV_mV[asv_arm_index];
 #if defined(CONFIG_REGULATOR)
 	regulator_set_voltage(arm_regulator, asv_arm_volt, asv_arm_volt);

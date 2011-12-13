@@ -42,7 +42,7 @@ extern "C"
 #include "s3c-otg-hcdi-memory.h"
 #include "s3c-otg-oci.h"
 
-__inline__ int root_hub_feature( 
+int root_hub_feature( 
 		struct usb_hcd *hcd,
 		const u8 port,
 		const u16 type_req,

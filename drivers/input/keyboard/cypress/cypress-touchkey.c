@@ -3,7 +3,7 @@
  *
  * Copyright 2005 Phil Blundell
  * Modified by DvTonder
- * BLN compatibility (sort of) by fluxi
+ * Full BLN compatibility by Fluxi
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -41,7 +41,6 @@
 
 #include "c1-cypress-gpio.h"
 
-
 /*
  * Melfas touchkey register
  */
@@ -65,21 +64,19 @@
  */
 #include <linux/wakelock.h>
 
-#define ENABLE_BL	1 /* CM was 1 */
-#define DISABLE_BL	0 /* CM was 2 */
+#define ENABLE_BL	1
+#define DISABLE_BL	0
 #define BL_ALWAYS_ON	-1
 #define BL_ALWAYS_OFF	-2
 #define BL_STANDARD	3000
-
-#define BLN_VERSION 9
-
+#define BLN_VERSION 10
 
 int led_on = -1;
 int screen_on = 1;
-int led_timeout = BL_STANDARD; /* leds on for 3 secs standard */
-int notification_timeout = -1; /* never time out */
-int enabled = 0; /* disabled by default, CM was "notification_enabled" and "-1" */
-int version = BLN_VERSION;
+int led_timeout = BL_STANDARD;	/* leds on for 3 secs standard */
+int notification_timeout = -1;	/* never time out */
+int enabled = 0;		/* disabled by default */
+bool bln_blink_enabled = 0;
 
 static struct wake_lock led_wake_lock;
 static DECLARE_MUTEX(enable_sem);
@@ -91,7 +88,6 @@ static DECLARE_WORK(bl_off_work, bl_off);
 static struct timer_list notification_timer;
 static void notification_off(struct work_struct *notification_off_work);
 static DECLARE_WORK(notification_off_work, notification_off);
-
 
 /* touchkey declares */
 static int touchkey_keycode[3] = { 0, KEY_MENU, KEY_BACK };
@@ -116,7 +112,6 @@ struct workqueue_struct *touchkey_wq;
 struct work_struct touch_update_work;
 struct delayed_work touch_resume_work;
 
-
 static const struct i2c_device_id melfas_touchkey_id[] = {
 	{"melfas_touchkey", 0},
 	{}
@@ -140,10 +135,6 @@ struct i2c_driver touchkey_i2c_driver = {
 
 static int touchkey_debug_count = 0;
 static char touchkey_debug[104];
-/* these are not used
-   static int touch_version = 0;
-   static int module_version = 0;
-*/
 extern int touch_is_pressed;
 
 static void touch_forced_release(void)
@@ -175,7 +166,6 @@ int touchkey_led_ldo_on(bool on)
 
 	return 0;
 }
-
 
 int touchkey_ldo_on(bool on)
 {
@@ -485,6 +475,17 @@ static void handle_notification_timeout(unsigned long data)
 	schedule_work(&notification_off_work);
 }
 
+static void enable_touchkey_backlights(void)
+{
+        int status = 1;
+        i2c_touchkey_write((u8 *)&status, 1);
+}
+
+static void disable_touchkey_backlights(void)
+{
+        int status = 2;
+        i2c_touchkey_write((u8 *)&status, 1);
+}
 
 static ssize_t led_status_read( struct device *dev, struct device_attribute *attr, char *buf )
 {
@@ -521,7 +522,8 @@ static ssize_t led_status_write( struct device *dev, struct device_attribute *at
 
 				/* See if a timeout value has been set for the notification */
 				if (notification_timeout > 0) {
-					mod_timer(&notification_timer, jiffies + msecs_to_jiffies(notification_timeout));	/* restart the timer */
+					/* restart the timer */
+					mod_timer(&notification_timer, jiffies + msecs_to_jiffies(notification_timeout));
 				}
 			}
 			break;
@@ -579,17 +581,6 @@ static ssize_t led_timeout_write( struct device *dev, struct device_attribute *a
 	return size;
 }
 
-static ssize_t notification_timeout_read( struct device *dev, struct device_attribute *attr, char *buf )
-{
-	return sprintf(buf,"%d\n", notification_timeout);
-}
-
-static ssize_t notification_timeout_write( struct device *dev, struct device_attribute *attr, const char *buf, size_t size )
-{
-	sscanf(buf,"%d\n", &notification_timeout);
-	return size;
-}
-
 static ssize_t enabled_read( struct device *dev, struct device_attribute *attr, char *buf )
 {
 	return sprintf(buf,"%d\n", enabled);
@@ -601,31 +592,50 @@ static ssize_t enabled_write( struct device *dev, struct device_attribute *attr,
 	return size;
 }
 
+static ssize_t blink_control_read( struct device *dev, struct device_attribute *attr, char *buf )
+{
+        return sprintf( buf, "%u\n", (bln_blink_enabled ? 1 : 0 ) );
+}
+
+static ssize_t blink_control_write( struct device *dev, struct device_attribute *attr, const char *buf, size_t size )
+{
+        unsigned int data;
+	int ret;
+
+        ret = sscanf(buf, "%u\n", &data);
+	if (ret != 1)
+		return -EINVAL;
+
+	if (data == 1) {
+		bln_blink_enabled = true;
+		disable_touchkey_backlights();
+	}
+
+	if (data == 0) {
+		bln_blink_enabled = false;
+		enable_touchkey_backlights();
+	}
+
+        return size;
+}
+
 static ssize_t version_read( struct device *dev, struct device_attribute *attr, char *buf )
 {
-	return sprintf(buf,"%d\n", version);
+	return sprintf(buf,"%d\n", BLN_VERSION);
 }
 
-static ssize_t version_write( struct device *dev, struct device_attribute *attr, const char *buf, size_t size )
-{
-        
-	sscanf(buf,"%d\n", &version);
-	return size;
-}
-
+static DEVICE_ATTR(blink_control, S_IRUGO | S_IWUGO, blink_control_read, blink_control_write );
+static DEVICE_ATTR(enabled, S_IRUGO | S_IWUGO, enabled_read, enabled_write );
 static DEVICE_ATTR(notification_led, S_IRUGO | S_IWUGO, led_status_read, led_status_write );
 static DEVICE_ATTR(led_timeout, S_IRUGO | S_IWUGO, led_timeout_read, led_timeout_write );
-static DEVICE_ATTR(notification_timeout, S_IRUGO | S_IWUGO, notification_timeout_read, notification_timeout_write );
-static DEVICE_ATTR(enabled, S_IRUGO | S_IWUGO, enabled_read, enabled_write );
-static DEVICE_ATTR(version, S_IRUGO | S_IWUGO, version_read, version_write );
-
+static DEVICE_ATTR(version, S_IRUGO | S_IWUGO, version_read, NULL );
 
 static struct attribute *bl_led_attributes[] = {
-	&dev_attr_notification_led.attr,
+        &dev_attr_blink_control.attr,
+        &dev_attr_enabled.attr,
+        &dev_attr_notification_led.attr,
 	&dev_attr_led_timeout.attr,
-	&dev_attr_notification_timeout.attr,
-	&dev_attr_enabled.attr,
-	&dev_attr_version.attr,
+        &dev_attr_version.attr,
 	NULL
 };
 
@@ -715,8 +725,8 @@ static int melfas_touchkey_late_resume(struct early_suspend *h)
 		if (wake_lock_active(&led_wake_lock)) {
 			wake_unlock(&led_wake_lock);
 		}
-
-		led_on = -1; /* force DISABLE_BL to ignore the led state because we want it left on */
+		/* force DISABLE_BL to ignore the led state because we want it left on */
+		led_on = -1;
 	}
 
 	if (led_timeout != BL_ALWAYS_OFF) {
@@ -808,7 +818,7 @@ static int i2c_touchkey_probe(struct i2c_client *client, const struct i2c_device
 	err = misc_register(&led_device);
 	if( err ){
 		printk(KERN_ERR "[LED Notify] sysfs misc_register failed.\n");
-	}else{
+	} else {
 		if( sysfs_create_group( &led_device.this_device->kobj, &bln_notification_group) < 0){
 			printk(KERN_ERR "[LED Notify] sysfs create group failed.\n");
 		}
@@ -967,7 +977,6 @@ static ssize_t touch_led_control(struct device *dev, struct device_attribute *at
 
 static ssize_t touchkey_enable_disable(struct device *dev, struct device_attribute *attr, const char *buf, size_t size)
 {
-
 	return size;
 }
 

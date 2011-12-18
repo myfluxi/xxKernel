@@ -30,6 +30,8 @@
 #include <linux/mutex.h>
 #include <linux/earlysuspend.h>
 
+#define SUSPEND_MAX_FREQUENCY   500000 /* 500 Mhz */
+
 #define dprintk(msg...) cpufreq_debug_printk(CPUFREQ_DEBUG_CORE, \
 						"cpufreq-core", msg)
 
@@ -43,8 +45,6 @@ int exp_UV_mV[8] = {
 	975000,  // 200Mhz
 	950000,  // 100Mhz
 };
-
-#define SUSPEND_MAX_FREQUENCY   500000 /* 500 Mhz */
 
 /**
  * The "cpufreq driver" - the arch- or hardware-dependent low
@@ -672,7 +672,7 @@ static ssize_t show_UV_mV_table(struct cpufreq_policy *policy, char *buf) {
 800mhz: %d mV\n\
 500mhz: %d mV\n\
 200mhz: %d mV\n\
-100mhz: %d mV\n", 
+100mhz: %d mV\n",
 		exp_UV_mV[0]/1000,
 		exp_UV_mV[1]/1000,
 		exp_UV_mV[2]/1000,
@@ -696,14 +696,6 @@ static ssize_t store_UV_mV_table(struct cpufreq_policy *policy,
               for( i = 0; i < 8; i++ )
               {
                  exp_UV_mV[i] *= 1000;
-                 if (exp_UV_mV[i] > 1500000)
-                 {
-                    exp_UV_mV[i] = 1500000;
-                 }
-                 else if (exp_UV_mV[i] < 800000)
-                 {
-                    exp_UV_mV[i] = 800000;
-                 }
               }
               return count;
 }
@@ -728,22 +720,19 @@ static ssize_t store_suspend_max_freq(struct cpufreq_policy *policy,
 	else
 	{
 		/* Correct bad user input */
-		if (suspend_freq <= 1600)
-		{
+		if (suspend_freq <= 1600){
 			suspend_freq = suspend_freq * 1000;
 		}
 		/* Static safe range is sufficient */
-		if (suspend_freq < 100000)
-		{
+		if (suspend_freq < 100000){
 			suspend_freq = 100000;
 		}
-		else if (suspend_freq > 1200000)
-		{
+		else if (suspend_freq > 1200000){
 			suspend_freq = 1200000;
 		}
 
 		printk(KERN_INFO
-          		"New maximum suspend frequency: %d KHz\n", suspend_freq);
+          		"cpufreq: New maximum suspend frequency: %d KHz\n", suspend_freq);
 
 		return count;
 	}

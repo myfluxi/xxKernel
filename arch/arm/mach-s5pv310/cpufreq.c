@@ -93,15 +93,9 @@ enum s5pv310_memory_type{
 	DDR3 = 0x6,
 };
 
-#ifdef CONFIG_CPU_S5PV310_EVT1
 enum cpufreq_level_index{
 	L0, L1, L2, L3, L4, L5, L6, L7, CPUFREQ_LEVEL_END,
 };
-#else
-enum cpufreq_level_index{
-	L0, L1, L2, L3, CPUFREQ_LEVEL_END,
-};
-#endif
 
 /* Using lookup table to support 1200MHz/1000MHz by reading chip id */
 static struct cpufreq_frequency_table s5pv310_lookup_freq_table[] = {
@@ -176,7 +170,6 @@ static unsigned int clkdiv_cpu1_lookup[][2] = {
 	{ 3, 0 },
 };
 
-#ifdef CONFIG_CPU_S5PV310_EVT1
 static struct cpufreq_frequency_table s5pv310_freq_table[] = {
 	{L0, 1600*1000},
 	{L1, 1400*1000},
@@ -184,21 +177,10 @@ static struct cpufreq_frequency_table s5pv310_freq_table[] = {
 	{L3, 1000*1000},
 	{L4, 800*1000},
 	{L5, 500*1000},
-#ifndef CONFIG_MACH_P6_REV02
 	{L6, 200*1000},
 	{L7, 100*1000},
-#endif
 	{0, CPUFREQ_TABLE_END},
 };
-#else
-static struct cpufreq_frequency_table s5pv310_freq_table[] = {
-	{L0, 1000*1000},
-	{L1, 800*1000},
-	{L2, 400*1000},
-	{L3, 100*1000},
-	{0, CPUFREQ_TABLE_END},
-};
-#endif
 
 #ifdef CONFIG_S5PV310_BUSFREQ
 #undef SYSFS_DEBUG_BUSFREQ
@@ -1345,43 +1327,33 @@ static int s5pv310_target(struct cpufreq_policy *policy,
 	if (s5pv310_max_armclk == ARMCLOCK_1600MHZ) {
 #ifdef CONFIG_FREQ_STEP_UP_L2_L0
 		/* change L2 -> L0 */
-		if ((index == L0) && (old_index > L4))
+		if ((index <= L2) && (old_index > L4))
 			index = L4;
 #else
 		/* change L2 -> L1 and change L1 -> L0 */
-		if (index == L0) {
+		if (index <= L2) {
 			if (old_index > L1)
 				index = L1;
 
 			if (old_index > L2)
 				index = L2;
-			
-			if (old_index > L3)
-				index = L3;
-
-			if (old_index > L4)
-				index = L4;
 		}
 #endif
 	} else {
-		if (index > L5)
-			index = L5;
-		else {
-		/* Prevent from jumping to 1GHz directly */
-		if ((index == L0) && (old_index > L3))
-			index = L3;
-
-		if ((index == L3) && (old_index > L4))
-			index = L4;
-		} 
-
-		if (old_index > L5)
-			old_index = L5;
+	/* Prevent from jumping to 1GHz directly */
+		if ((index == L0) && (old_index > L1))
+			index = L1;
 	}
-		/* prevent freqs going above max policy - netarchy */
-		while (s5pv310_freq_table[index].frequency > policy->max) {
+	/* prevent freqs going above max policy - netarchy */		
+	while (s5pv310_freq_table[index].frequency > policy->max) {
 			index += 1;
-		}
+
+		if (index > L3)
+			index = L3;
+	
+		if (old_index > L3)
+			old_index = L3;
+	}
 
 	freqs.new = s5pv310_freq_table[index].frequency;
 	freqs.cpu = policy->cpu;
@@ -2088,8 +2060,6 @@ static int iem_clock_init(void)
 	struct clk *clk_hpm;
 	struct clk *clk_copy;
 	struct clk *clk_parent;
-	struct clk *clk_iec;
-	struct clk *clk_apc;
 
 	/* PWI clock setting */
 	clk_copy = clk_get(NULL, "sclk_pwi");
@@ -2421,22 +2391,14 @@ static int s5pv310_asv_table_update(void)
 			break;
 		}
 		/* Maximum Voltage */
-/*		if (s5pv310_volt_table[i].arm_volt > 1450000)
-			s5pv310_volt_table[i].arm_volt = 1450000;
-*/
 		if (exp_UV_mV[i] > 1500000)
 			exp_UV_mV[i] = 1500000;
 		
 
 		/* Minimum Voltage */
-/*		if (s5pv310_volt_table[i].arm_volt < 925000)
-			s5pv310_volt_table[i].arm_volt = 925000;
-*/
 		if (exp_UV_mV[i] < 800000)
 			exp_UV_mV[i] = 800000;
 
-/*		printk(KERN_INFO "ASV voltage_table[%d].arm_volt = %d\n",
-				i, s5pv310_volt_table[i].arm_volt); */
 		printk(KERN_INFO "ASV voltage_table[%d].arm_volt = %d\n",
 				i, exp_UV_mV[i]);
 	}

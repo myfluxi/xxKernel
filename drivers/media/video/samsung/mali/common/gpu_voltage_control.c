@@ -19,7 +19,7 @@
 #include "gpu_voltage_control.h"
 
 #if defined(CONFIG_GPU_UNDERVOLTING)
-int gpu_voltage_control[2] = { 850000, 925000 };
+int gpu_voltage_control[2] = { 850000, 950000 };
 #else
 int gpu_voltage_control[2] = { 950000, 1000000 };
 #endif

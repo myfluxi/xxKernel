@@ -39,7 +39,8 @@
 
 /* Selectable one room temperature among 3 kinds */
 #undef  OPERATION_TEMP_BASE_61
-#define OPERATION_TEMP_BASE_78 /* Correct settings for alternative freq tables */
+#undef  OPERATION_TEMP_BASE_78
+#define OPERATION_TEMP_BASE_75
 
 #define TIMMING_AREF 0x30
 #define AUTO_REFRESH_PERIOD_TQ0		0x2E /* auto refresh preiod 1.95us */
@@ -55,7 +56,7 @@
 /* TMU register setting value */
 #define THD_TEMP 0x80	  /* 78 degree  : threshold temp */
 #define TRIGGER_LEV0 0x9  /* 87 degree  : throttling temperature */
-#define	TRIGGER_LEV1 0x19 /* 103 degree  : Waring temperature */
+#define	TRIGGER_LEV1 0x19 /* 103 degree  : Warning temperature */
 #define TRIGGER_LEV2 0x20 /* 110 degree : Tripping temperature  */
 #define	TRIGGER_LEV3 0xFF /* Reserved */
 
@@ -68,11 +69,26 @@
 #define TEMP_MAX_CELCIUS	125
 #endif
 
+/* New profile based on 75 degrees */
+#ifdef OPERATION_TEMP_BASE_75
+#define THD_TEMP 0x7D	  /* 75 degree  : threshold temp */
+#define TRIGGER_LEV0 0x5  /* 80 degree  : throttling temperature */
+#define	TRIGGER_LEV1 0x1C /* 103 degree  : Warning temperature */
+#define TRIGGER_LEV2 0x23 /* 110 degree : Tripping temperature  */
+#define	TRIGGER_LEV3 0xFF /* Reserved */
+#define TEMP_TROTTLED_CELCIUS	 80
+#define TEMP_WARNING_CELCIUS	103
+#define TEMP_TQ0_CELCIUS	 85
+#define TEMP_TRIPPED_CELCIUS	110
+#define TEMP_MIN_CELCIUS	 25
+#define TEMP_MAX_CELCIUS	125
+#endif
+
 #ifdef OPERATION_TEMP_BASE_61
 /* test on 35 celsius base */
 #define THD_TEMP     0x6F /* 61 degree: thershold temp */
 #define TRIGGER_LEV0 0x3  /* 64	degree: Throttling temperature */
-#define TRIGGER_LEV1 0x2A /* 103 degree: Waring temperature */
+#define TRIGGER_LEV1 0x2A /* 103 degree: Warning temperature */
 #define TRIGGER_LEV2 0x31 /* 110 degree: Tripping temperature */
 #define TRIGGER_LEV3 0xFF /* Reserved */
 #define TEMP_TROTTLED_CELCIUS	 64
@@ -117,6 +133,10 @@ struct tmu_data_band tmu_temp_band = {
 #ifdef OPERATION_TEMP_BASE_61
 	/*  61 : low temp of throttling */
 	.thr_low	= TEMP_TROTTLED_CELCIUS	- 3,
+#endif
+#ifdef OPERATION_TEMP_BASE_75
+	/*  75 : low temp of throttling */
+	.thr_low	= TEMP_TROTTLED_CELCIUS	- 3,
 #else
 	/*  83 : low temp of throttling */
 	.thr_low	= TEMP_TROTTLED_CELCIUS	- 4,
@@ -158,6 +178,9 @@ struct s5p_tmu_info *tmu_info;
 #ifdef CONFIG_TMU_DEBUG_ENABLE
 static int set_tmu_test;
 #ifdef OPERATION_TEMP_BASE_61
+static int set_thr_stop		= (TEMP_TROTTLED_CELCIUS - 3);
+#endif
+#ifdef OPERATION_TEMP_BASE_75
 static int set_thr_stop		= (TEMP_TROTTLED_CELCIUS - 3);
 #else
 static int set_thr_stop		= (TEMP_TROTTLED_CELCIUS - 4);
@@ -419,7 +442,7 @@ static void tmu_poll_testmode(void)
 
 		if (cur_temp >= set_thr_temp) { /* 85 */
 			tmu_info->ctz->data.tmu_flag = TMU_STATUS_THROTTLED;
-			s5pv310_cpufreq_upper_limit(DVFS_LOCK_ID_TMU, CPU_L2);
+			s5pv310_cpufreq_upper_limit(DVFS_LOCK_ID_TMU, CPU_L1);
 			cpufreq_limited_thr = 1;
 			if (tmu_tripped_cb(TMU_STATUS_THROTTLED) < 0)
 				pr_err("Error inform to battery driver !\n");
@@ -431,7 +454,7 @@ static void tmu_poll_testmode(void)
 
 	case TMU_STATUS_THROTTLED:
 		if (cur_temp >= set_thr_temp && !(cpufreq_limited_thr)) {
-			s5pv310_cpufreq_upper_limit(DVFS_LOCK_ID_TMU, CPU_L2);
+			s5pv310_cpufreq_upper_limit(DVFS_LOCK_ID_TMU, CPU_L1);
 			cpufreq_limited_thr = 1;
 			if (tmu_tripped_cb(TMU_STATUS_THROTTLED) < 0)
 				pr_err("Error inform to battery driver !\n");
@@ -491,7 +514,7 @@ static void tmu_poll_testmode(void)
 			s5pv310_cpufreq_upper_limit_free(DVFS_LOCK_ID_TMU);
 			cpufreq_limited_warn = 0;
 			s5pv310_cpufreq_upper_limit(DVFS_LOCK_ID_TMU,
-					CPU_L2); /* CPU_L2 */
+					CPU_L1); /* CPU_L1 */
 			cpufreq_limited_thr = 1;
 			if (tmu_tripped_cb(TMU_STATUS_THROTTLED) < 0)
 				pr_err("Error inform to battery driver !\n");
@@ -626,7 +649,7 @@ static void tmu_poll_timer(struct work_struct *work)
 		}
 		if (cur_temp >= TEMP_TROTTLED_CELCIUS) { /* 87 */
 			tmu_info->ctz->data.tmu_flag = TMU_STATUS_THROTTLED;
-			s5pv310_cpufreq_upper_limit(DVFS_LOCK_ID_TMU, CPU_L2);
+			s5pv310_cpufreq_upper_limit(DVFS_LOCK_ID_TMU, CPU_L1);
 			cpufreq_limited_thr = 1;
 			if (tmu_tripped_cb(TMU_STATUS_THROTTLED) < 0)
 				pr_err("Error inform to battery driver !\n");
@@ -639,7 +662,7 @@ static void tmu_poll_timer(struct work_struct *work)
 	case TMU_STATUS_THROTTLED:
 		if (cur_temp >= TEMP_TROTTLED_CELCIUS &&
 				!(cpufreq_limited_thr)) {
-			s5pv310_cpufreq_upper_limit(DVFS_LOCK_ID_TMU, CPU_L2);
+			s5pv310_cpufreq_upper_limit(DVFS_LOCK_ID_TMU, CPU_L1);
 			cpufreq_limited_thr = 1;
 			if (tmu_tripped_cb(TMU_STATUS_THROTTLED) < 0)
 				pr_err("Error inform to battery driver !\n");
@@ -685,7 +708,7 @@ static void tmu_poll_timer(struct work_struct *work)
 			tmu_info->ctz->data.tmu_flag = TMU_STATUS_THROTTLED;
 			s5pv310_cpufreq_upper_limit_free(DVFS_LOCK_ID_TMU);
 			cpufreq_limited_warn = 0;
-			s5pv310_cpufreq_upper_limit(DVFS_LOCK_ID_TMU, CPU_L2);
+			s5pv310_cpufreq_upper_limit(DVFS_LOCK_ID_TMU, CPU_L1);
 			cpufreq_limited_thr = 1;
 			if (tmu_tripped_cb(TMU_STATUS_THROTTLED) < 0)
 				pr_err("Error inform to battery driver !\n");

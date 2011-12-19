@@ -1327,33 +1327,43 @@ static int s5pv310_target(struct cpufreq_policy *policy,
 	if (s5pv310_max_armclk == ARMCLOCK_1600MHZ) {
 #ifdef CONFIG_FREQ_STEP_UP_L2_L0
 		/* change L2 -> L0 */
-		if ((index <= L2) && (old_index > L4))
+		if ((index == L0) && (old_index > L4))
 			index = L4;
 #else
 		/* change L2 -> L1 and change L1 -> L0 */
-		if (index <= L2) {
+		if (index == L0) {
 			if (old_index > L1)
 				index = L1;
 
 			if (old_index > L2)
 				index = L2;
+
+			if (old_index > L3)
+				index = L3;
+
+			if (old_index > L4)
+				index = L4;
 		}
 #endif
 	} else {
-	/* Prevent from jumping to 1GHz directly */
-		if ((index == L0) && (old_index > L1))
-			index = L1;
-	}
-	/* prevent freqs going above max policy - netarchy */		
-	while (s5pv310_freq_table[index].frequency > policy->max) {
-			index += 1;
-
-		if (index > L3)
+		if (index > L5)
+			index = L5;
+		else {
+		/* Prevent from jumping to 1GHz directly */
+		if ((index == L0) && (old_index > L3))
 			index = L3;
-	
-		if (old_index > L3)
-			old_index = L3;
+
+		if ((index == L3) && (old_index > L4))
+			index = L4;
+		}
+
+		if (old_index > L5)
+			old_index = L5;
 	}
+		/* prevent freqs going above max policy - netarchy */
+		while (s5pv310_freq_table[index].frequency > policy->max) {
+			index += 1;
+		}
 
 	freqs.new = s5pv310_freq_table[index].frequency;
 	freqs.cpu = policy->cpu;

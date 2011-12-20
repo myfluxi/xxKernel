@@ -423,8 +423,8 @@ static void mxt224_ta_probe(int ta_status)
 	}
 
 	if (ta_status) {
-		threshold = 70;
-		threshold_e = 70;
+		threshold = 50;
+		threshold_e = 50;
 		/*calcfg = 112;*/
 		calcfg_dis = T48_CALCFG_TA;
 		calcfg_en = T48_CALCFG_TA | 0x20;
@@ -433,7 +433,7 @@ static void mxt224_ta_probe(int ta_status)
 		blen = 16;
 	} else {
 	    if (boot_or_resume==1)
-			threshold = 55;
+			threshold = 45;
 		else
 		    threshold = 40;
 		threshold_e = 50;

@@ -251,7 +251,7 @@ struct sec_bat_info {
 	int batt_vf_adc;
 	int batt_event_status;
 	unsigned long event_end_time;
-#elif CONFIG_TARGET_LOCALE_NA
+#elif defined(CONFIG_TARGET_LOCALE_NA)
 	int use_call ;
 	int use_video ;
 	int use_music ;
@@ -1908,7 +1908,7 @@ static struct device_attribute sec_battery_attrs[] = {
 	SEC_BATTERY_ATTR(wifi),
 	SEC_BATTERY_ATTR(gps),
 	SEC_BATTERY_ATTR(camera),
-#elif CONFIG_TARGET_LOCALE_NA
+#elif defined(CONFIG_TARGET_LOCALE_NA)
 	SEC_BATTERY_ATTR(call),
 	//SEC_BATTERY_ATTR(video),
 	//SEC_BATTERY_ATTR(music),
@@ -1956,7 +1956,7 @@ enum {
 	BATT_GPS,
 	BATT_CAMERA,
 #endif
-#if CONFIG_TARGET_LOCALE_NA
+#if defined(CONFIG_TARGET_LOCALE_NA)
 	BATT_CALL,
 	BATT_BROWSER,
 	BATT_HOTSOPT,
@@ -1992,7 +1992,7 @@ static void sec_bat_check_event_status(
 
 	return ;
 }
-#elif CONFIG_TARGET_LOCALE_NA
+#elif defined(CONFIG_TARGET_LOCALE_NA)
 static void sec_bat_check_event_status(
 		struct sec_bat_info *info, int mode, int offset)
 {
@@ -2213,7 +2213,7 @@ static ssize_t sec_bat_store(struct device *dev,
 			ret = count;
 #if defined(CONFIG_TARGET_LOCALE_NAATT)
 			sec_bat_check_event_status(info, x, OFFSET_VIDEO_PLAY);
-#elif CONFIG_TARGET_LOCALE_NA
+#elif defined(CONFIG_TARGET_LOCALE_NA)
 			info->use_video = x;
 			sec_bat_check_event_status(info, x,	USE_VIDEO);
 #endif
@@ -2226,7 +2226,7 @@ static ssize_t sec_bat_store(struct device *dev,
 			ret = count;
 #if defined(CONFIG_TARGET_LOCALE_NAATT)
 			sec_bat_check_event_status(info, x, OFFSET_MP3_PLAY);
-#elif CONFIG_TARGET_LOCALE_NA
+#elif defined(CONFIG_TARGET_LOCALE_NA)
 			info->use_music = x;
 			sec_bat_check_event_status(info, x,	USE_MUSIC);
 #endif
@@ -2594,7 +2594,7 @@ static __devinit int sec_bat_probe(struct platform_device *pdev)
 	info->batt_vf_adc = 0;
 	info->batt_event_status = 0;
 	info->event_end_time = 0xFFFFFFFF;
-#elif CONFIG_TARGET_LOCALE_NA
+#elif defined(CONFIG_TARGET_LOCALE_NA)
 	info->use_call = 0;
 	info->use_video =0 ;
 	info->use_music =0;

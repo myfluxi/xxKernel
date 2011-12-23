@@ -81,7 +81,6 @@ int s3c_fimc_clk_on(struct platform_device *pdev, struct clk **clk)
 err_clk3:
 	clk_put(sclk_fimc_lclk);
 
-err_clk1:
 	return -EINVAL;
 }
 

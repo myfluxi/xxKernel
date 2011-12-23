@@ -1034,7 +1034,7 @@ specific_send_sig_info(int sig, struct siginfo *info, struct task_struct *t)
 int do_send_sig_info(int sig, struct siginfo *info, struct task_struct *p,
 			bool group)
 {
-	unsigned long flags;
+	unsigned long flags = 0;
 	int ret = -ESRCH;
 
 	if (lock_task_sighand(p, &flags)) {
@@ -1203,7 +1203,7 @@ int kill_pid_info_as_uid(int sig, struct siginfo *info, struct pid *pid,
 	int ret = -EINVAL;
 	struct task_struct *p;
 	const struct cred *pcred;
-	unsigned long flags;
+	unsigned long flags = 0;
 
 	if (!valid_signal(sig))
 		return ret;
@@ -1397,7 +1397,7 @@ int send_sigqueue(struct sigqueue *q, struct task_struct *t, int group)
 {
 	int sig = q->info.si_signo;
 	struct sigpending *pending;
-	unsigned long flags;
+	unsigned long flags = 0;
 	int ret;
 
 	BUG_ON(!(q->flags & SIGQUEUE_PREALLOC));

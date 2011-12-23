@@ -28,7 +28,7 @@ void gps_uart_cfg_gpio(int array_size, unsigned int (*gpio_table)[4])
 	}
 }
 
-static void __init gps_gpio_init(void)
+static int __init gps_gpio_init(void)
 {
 	gpio_request(GPIO_GPS_nRST, "GPS_nRST");
 	s3c_gpio_setpull(GPIO_GPS_nRST, S3C_GPIO_PULL_UP);
@@ -89,6 +89,8 @@ static void __init gps_gpio_init(void)
 #endif
 
 	gps_uart_cfg_gpio(ARRAY_SIZE(gps_uart_on_table), gps_uart_on_table);
+
+	return 0;
 }
 
 arch_initcall(gps_gpio_init);

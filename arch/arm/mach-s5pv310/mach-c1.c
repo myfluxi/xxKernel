@@ -2958,9 +2958,9 @@ static void mxt224_register_callback(void *function)
 	charging_cbs.tsp_set_charging_cable = function;
 }
 
-static void mxt224_read_ta_status(bool *ta_status)
+static void mxt224_read_ta_status(void *ta_status)
 {
-	*ta_status = is_cable_attached;
+	*((bool*)ta_status) = is_cable_attached;
 }
 
 #if defined(CONFIG_MACH_C1Q1_REV02) || defined(CONFIG_MACH_P6_REV02)

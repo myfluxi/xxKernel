@@ -20,9 +20,10 @@
 
 static inline void arch_wdt_reset(void)
 {
-	struct clk *wdtclk;
 
 #if 0
+	struct clk *wdtclk;
+
 	printk("arch_reset: attempting watchdog reset\n");
 
 	__raw_writel(0, S3C2410_WTCON);	  /* disable watchdog, to be safe  */

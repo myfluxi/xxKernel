@@ -602,7 +602,7 @@ static byte CBusConmmandGetNextInQueue( byte channel )
 //              changed or the channel heartbeat has been lost.
 // Parameters:  channel - CBUS channel to reset
 //------------------------------------------------------------------------------
-
+/*
 static void CBusResetToIdle ( byte channel )
 {
 	byte queueIndex;
@@ -614,7 +614,7 @@ static void CBusResetToIdle ( byte channel )
 		l_cbus[ channel].request[ queueIndex].reqStatus = CBUS_REQ_IDLE;
 	}
 }
-
+*/
 //------------------------------------------------------------------------------
 // Function:    CBusCheckInterruptStatus
 // Description: If any interrupts on the specified channel are set, process them.
@@ -625,8 +625,7 @@ static void CBusResetToIdle ( byte channel )
 static byte CBusCheckInterruptStatus ( byte channel )
 {
 	byte 	intStatus, result;
-	byte     vs_cmd, vs_data;
-	byte 	writeBurstLen 	= 0;
+	byte 	vs_cmd = 0, vs_data = 0, writeBurstLen = 0;
 
 	/* Read CBUS interrupt status.  */
 	intStatus = SiIRegioCbusRead( REG_CBUS_INTR_STATUS, channel );
@@ -1002,7 +1001,6 @@ Bool SI_CbusInitialize ( void )
 {
 	byte     channel;
 	int	result = STATUS_SUCCESS;
-	int	port = 0;
 	word	devcap_reg;
 	int 		regval;
 

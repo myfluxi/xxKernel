@@ -6,6 +6,7 @@
 #define __C1_H__
 
 struct uart_port;
+struct platform_device;
 
 extern void c1_bt_uart_wake_peer(struct uart_port *port);
 

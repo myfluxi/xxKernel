@@ -579,10 +579,9 @@ static struct sleep_save s5pv310_set_clksrc[] = {
  */
 void s5p_aftr_cache_clean(unsigned long stack_addr)
 {
-	unsigned long tmp;
 
 	/* SVC mode stack area is cleaned from L1 cache */
-	clean_dcache_area(stack_addr, 0x100);
+	clean_dcache_area((void *)stack_addr, 0x100);
 	/* The variable is cleaned from L1 cache */
 	clean_dcache_area(&s3c_sleep_save_phys, 0x4);
 

@@ -631,7 +631,6 @@ void sii9234_cfg_power(bool on)
 	}
 	printk(KERN_ERR "[MHL]%s : %d \n",__func__,on);
 
-out:
 	return;
 }
 

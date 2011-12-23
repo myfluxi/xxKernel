@@ -501,7 +501,7 @@ static int sipc4_hdlc_rx(struct sipc4_rx_data *data)
 	int rest = data->size;
 	char *buf = page_address(data->page);
 	int len;
-	int err;
+	int err = 0;
 
 	if (rest <= 0)
 		goto end;

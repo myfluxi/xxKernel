@@ -10,6 +10,8 @@
  * published by the Free Software Foundation.
 */
 
+struct s3c2410_uartcfg;
+
 /* Common init code for S5PV310 related SoCs */
 extern void s5pv310_common_init_uarts(struct s3c2410_uartcfg *cfg, int no);
 extern void s5pv310_register_clocks(void);

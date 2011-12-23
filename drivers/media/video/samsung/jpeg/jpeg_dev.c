@@ -422,7 +422,7 @@ static int jpeg_remove(struct platform_device *dev)
 	return 0;
 }
 
-static int jpeg_suspend(struct platform_device *pdev, pm_message_t state)
+static int jpeg_suspend(struct device *pdev)
 {
 	/* clock disable */
 	clk_disable(jpeg_ctrl->clk);
@@ -435,7 +435,7 @@ static int jpeg_suspend(struct platform_device *pdev, pm_message_t state)
 	return 0;
 }
 
-static int jpeg_resume(struct platform_device *pdev)
+static int jpeg_resume(struct device *pdev)
 {
 #if defined(CONFIG_CPU_S5PV210)
 	if (s5pv210_pd_enable("jpeg_pd") < 0) {

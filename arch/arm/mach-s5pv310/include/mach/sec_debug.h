@@ -22,6 +22,7 @@ extern void sec_gaf_supply_rqinfo(unsigned short curr_offset,
 #else
 static inline int sec_debug_init(void)
 {
+	return 0;
 }
 
 static inline void sec_debug_check_crash_key(unsigned int code, int value)

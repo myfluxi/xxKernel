@@ -227,6 +227,7 @@
 #ifndef __ASSEMBLY__
 
 struct platform_device;
+struct uart_port;
 
 /* struct s3c24xx_uart_clksrc
  *

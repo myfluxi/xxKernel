@@ -330,9 +330,9 @@ signed char fXRESInitializeTargetForISSP(void)
 // ============================================================================
 signed char fPowerCycleInitializeTargetForISSP(unsigned long flag)
 {
-    printk(KERN_ERR"[TOUCHKEY]start fPowerCycleInitializeTargetForISSP\n");
-	 //unsigned char n;
-    int n=0;
+	int n=0;
+
+	printk(KERN_ERR"[TOUCHKEY]start fPowerCycleInitializeTargetForISSP\n");
 
 	// Set all pins to highZ to avoid back powering the PSoC through the GPIO
 	// protection diodes.

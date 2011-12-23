@@ -164,7 +164,6 @@ static bool boot_or_resume = 1;/*1: boot_or_resume,0: others*/
 static int palm_chk_flag;
 static bool auto_cal_flag; /* 1: enabled,0: disabled*/
 static bool ta_status_pre = 0;
-static bool sleep_mode_flag = 0;
 
 
 #ifdef CONFIG_TARGET_LOCALE_KOR
@@ -415,8 +414,6 @@ static void mxt224_ta_probe(int ta_status)
 	u8 blen;
 	u8 calcfg_dis;
 	u8 calcfg_en;
-	u16 i;
-	u8 size;
 	if (!mxt224_enabled) {
 		printk(KERN_ERR"[TSP] mxt224_enabled is 0\n");
 		return;
@@ -1084,7 +1081,7 @@ static irqreturn_t mxt224_irq_thread(int irq, void *ptr)
 	int id;
 	u8 msg[data->msg_object_size];
 	u8 touch_message_flag = 0;
-	u8 value, size_one,ret;
+	u8 value, size_one, ret;
 	u16 obj_address = 0;
 	unsigned int register_address = 0;
 
@@ -1569,7 +1566,6 @@ int read_all_data(uint16_t dbg_mode)
 {
 	u8 read_page, read_point;
 	u16 max_value = MAX_VALUE, min_value = MIN_VALUE;
-	uint16_t qt_refrence;
 	u16 object_address = 0;
 	u8 data_buffer[2] = { 0 };
 	u8 node = 0;
@@ -1649,8 +1645,6 @@ int read_all_data(uint16_t dbg_mode)
 int read_all_delta_data(uint16_t dbg_mode)
 {
 	u8 read_page, read_point;
-	u16 max_value = MAX_VALUE, min_value = MIN_VALUE;
-	uint16_t qt_refrence;
 	u16 object_address = 0;
 	u8 data_buffer[2] = { 0 };
 	u8 node = 0;
@@ -2109,7 +2103,6 @@ static ssize_t set_firm_version_show(struct device *dev, struct device_attribute
 static ssize_t set_module_off_show(struct device *dev, struct device_attribute *attr, char *buf)
 {
 	struct mxt224_data *data = copy_data;
-	u8 sleep_power_cfg[3] = {0, };
 	int count;
 #ifdef CONFIG_MACH_C1_NA_SPR_EPIC2_REV00
 	int i;
@@ -2660,7 +2653,6 @@ static int __devinit mxt224_probe(struct i2c_client *client, const struct i2c_de
 	u16 size_one;
 	u8 user_info_value;
 	u16 obj_address;
-	u8 value;
 
 	touch_is_pressed = 0;
 

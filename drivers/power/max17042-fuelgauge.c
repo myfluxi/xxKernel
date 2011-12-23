@@ -453,7 +453,7 @@ static void max17042_get_version(struct i2c_client *client)
 
 static int max17042_set_property(struct power_supply *psy,
 			    enum power_supply_property psp,
-			    union power_supply_propval *val)
+			    const union power_supply_propval *val)
 {
 	struct max17042_chip *chip = container_of(psy,
 						  struct max17042_chip,

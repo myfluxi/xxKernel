@@ -392,10 +392,9 @@ int s3c_mdnie_setup(void)
 void mDNIe_Set_Mode(Lcd_mDNIe_UI mode, u8 mDNIe_Outdoor_OnOff)
 {
 	
-	int ret;
 	if(!g_mdine_enable) {
 		printk(KERN_ERR"[mDNIE WARNING] mDNIE engine is OFF. So you cannot set mDnie Mode correctly.\n");
-		return ret;
+
 	}
 	switch(current_mDNIe_user_mode){
 		case  mDNIe_DYNAMIC:
@@ -555,10 +554,9 @@ void mDNIe_Set_Mode(Lcd_mDNIe_UI mode, u8 mDNIe_Outdoor_OnOff)
 
 void mDNIe_User_Select_Mode(Lcd_mDNIe_User_Set mode)
 {
-	int ret;
 	if(!g_mdine_enable) {
 		printk(KERN_ERR"[mDNIE WARNING] mDNIE engine is OFF. So you cannot set mDnie Mode correctly.\n");
-		return ret;
+
 	}
 	switch (mode) {
 	case mDNIe_DYNAMIC:  
@@ -580,10 +578,9 @@ void mDNIe_User_Select_Mode(Lcd_mDNIe_User_Set mode)
 
 void mDNIe_init_Mode_Set(Lcd_mDNIe_User_Set mode)
 {
-	int ret;
 	if(!g_mdine_enable) {
 		printk(KERN_ERR" [mDNIE WARNING] mDNIE engine is OFF. So you cannot set mDnie Mode correctly.\n");
-		return ret;
+
 	}
 	mDNIe_User_Select_Mode(current_mDNIe_user_mode);
 	mDNIe_Set_Mode(current_mDNIe_Mode, current_mDNIe_OutDoor_OnOff);
@@ -834,7 +831,7 @@ static ssize_t mdnieset_init_file_cmd_store(struct device *dev,
 		break;
 		
 	default:
-		printk(KERN_ERR "n\mdnieset_init_file_cmd_store value is wrong : value(%d)\n", value);
+		printk(KERN_ERR "mdnieset_init_file_cmd_store value is wrong : value(%d)\n", value);
 		break;
 	}
 	mDNIe_User_Select_Mode(current_mDNIe_user_mode);

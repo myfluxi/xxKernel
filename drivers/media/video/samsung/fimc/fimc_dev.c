@@ -2321,8 +2321,9 @@ static inline int fimc_resume_cap(struct fimc_control *ctrl)
 {
 	struct fimc_global *fimc = get_fimc_dev();
 	int tmp;
-	fimc_dbg("%s\n", __func__);
 	u32 timeout;
+
+	fimc_dbg("%s\n", __func__);
 
 	__raw_writel(S5P_INT_LOCAL_PWR_EN, S5P_PMU_CAM_CONF);
 

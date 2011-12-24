@@ -404,7 +404,7 @@ static unsigned int decideNextStatus(unsigned int utilization)
 
 extern struct s5pv310_asv_info asv_info;
 
-static mali_bool mali_dvfs_table_update()
+static mali_bool mali_dvfs_table_update(void)
 {
 
 #ifdef CONFIG_S5PV310_HI_ARMCLK_THAN_1_2GHZ

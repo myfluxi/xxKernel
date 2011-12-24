@@ -131,7 +131,7 @@ static int max8922_set_property(struct power_supply *psy,
 	}
 	return 0;
 }
-
+/*
 static irqreturn_t max8922_chg_ing_irq(int irq, void *data)
 {
 	struct max8922_info *info = data;
@@ -153,7 +153,7 @@ static irqreturn_t max8922_chg_ing_irq(int irq, void *data)
 
 	return IRQ_HANDLED;
 }
-
+*/
 static __devinit int max8922_probe(struct platform_device *pdev)
 {
 	struct max8922_platform_data *pdata = dev_get_platdata(&pdev->dev);

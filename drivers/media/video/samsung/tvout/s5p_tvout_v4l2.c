@@ -641,10 +641,11 @@ const struct v4l2_ioctl_ops s5p_tvout_tvif_ioctl_ops = {
 long s5p_tvout_tvif_ioctl(
 		struct file *file, unsigned int cmd, unsigned long arg)
 {
+	long ret = 0;
+
 #ifdef CONFIG_HAS_EARLYSUSPEND
 	s5p_tvout_mutex_lock();
 #endif
-	long ret = 0;
 
 	tvout_dbg("\n");
 

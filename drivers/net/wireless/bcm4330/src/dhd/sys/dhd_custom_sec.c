@@ -398,7 +398,7 @@ int check_module_cid(dhd_pub_t *dhd)
 
 	fp_cid = filp_open(cidfilepath, O_RDONLY, 0);
 	if (!IS_ERR(fp_cid)) { 
-		kernel_read(fp_cid, fp_cid->f_pos, &cid_buf, sizeof(cid_buf)); 
+		kernel_read(fp_cid, fp_cid->f_pos, (char*)&cid_buf, sizeof(cid_buf)); 
 		if(strstr(cid_buf,"samsung")||strstr(cid_buf,"murata")) {
 		/* file does exist, just return */
 		filp_close(fp_cid, NULL);

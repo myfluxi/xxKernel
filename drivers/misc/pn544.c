@@ -298,7 +298,7 @@ static int pn544_dev_ioctl(struct inode *inode, struct file *filp,
 			gpio_set_value(pn544_dev->ven_gpio, 0);
 			msleep(10);
 		} else {
-			pr_err("%s bad arg %u\n", __func__, arg);
+			pr_err("%s bad arg %lu\n", __func__, arg);
 			return -EINVAL;
 		}
 		break;

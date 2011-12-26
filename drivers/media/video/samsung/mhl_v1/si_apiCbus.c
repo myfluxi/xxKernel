@@ -594,7 +594,7 @@ static byte CBusConmmandGetNextInQueue( byte channel )
 	return result;
 
 }
-
+#if 0
 //------------------------------------------------------------------------------
 // Function:    CBusResetToIdle
 // Description: Set the specified channel state to IDLE. Clears any messages that
@@ -602,7 +602,7 @@ static byte CBusConmmandGetNextInQueue( byte channel )
 //              changed or the channel heartbeat has been lost.
 // Parameters:  channel - CBUS channel to reset
 //------------------------------------------------------------------------------
-/*
+
 static void CBusResetToIdle ( byte channel )
 {
 	byte queueIndex;
@@ -614,7 +614,8 @@ static void CBusResetToIdle ( byte channel )
 		l_cbus[ channel].request[ queueIndex].reqStatus = CBUS_REQ_IDLE;
 	}
 }
-*/
+#endif
+
 //------------------------------------------------------------------------------
 // Function:    CBusCheckInterruptStatus
 // Description: If any interrupts on the specified channel are set, process them.

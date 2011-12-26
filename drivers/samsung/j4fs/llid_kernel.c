@@ -93,7 +93,7 @@ int FlashDevRead(j4fs_device_info *dev_ptr, DWORD offset, DWORD length, BYTE *bu
 		set_fs(oldfs);
 		j4fs_filp->f_flags &= ~O_NONBLOCK;
 		if (ret < 0) {
-			printk(1, "j4fs_filp->read() failed: %d\n", ret);
+			printk("j4fs_filp->read() failed: %d\n", ret);
 			return J4FS_FAIL;
 		}
 // J4FS for moviNAND merged from ROSSI
@@ -149,7 +149,7 @@ int FlashDevWrite(j4fs_device_info *dev_ptr, DWORD offset, DWORD length, BYTE *b
 	set_fs(oldfs);
 	j4fs_filp->f_flags &= ~O_NONBLOCK;
 	if (ret < 0) {
-		printk(1, "j4fs_filp->write() failed: %d\n", ret);
+		printk("j4fs_filp->write() failed: %d\n", ret);
 		return J4FS_FAIL;
 	}
 // J4FS for moviNAND merged from ROSSI

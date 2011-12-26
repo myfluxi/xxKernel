@@ -234,7 +234,7 @@ int j4fs_write_begin(struct file *filp, struct address_space *mapping,
 	T(J4FS_TRACE_FS, ("start j4fs_write_begin\n"));
 
 	if(to>PAGE_CACHE_SIZE) {
-		T(J4FS_TRACE_ALWAYS,("%s %d: page size overflow(pos,index,offset,len,to)=(%d,%d,%d,%d,%d)\n",__FUNCTION__,__LINE__,pos,index,offset,len,to));
+		T(J4FS_TRACE_ALWAYS,("%s %d: page size overflow(pos,index,offset,len,to)=(%jd,%ld,%d,%d,%d)\n",__FUNCTION__,__LINE__,pos,index,offset,len,to));
 		j4fs_panic("page size overflow");
 		return -ENOSPC;
 	}
@@ -1416,7 +1416,7 @@ ssize_t lfs_write(struct file *file, const char __user * buffer, size_t count, l
 	return -EINVAL;
 }
 
-int j4fs_fsync(struct file *file, struct dentry *dentry, int datasync)
+int j4fs_fsync(struct file *file, int datasync)
 {
 	return 0;
 }

@@ -178,20 +178,21 @@ struct s3c_udc {
 #endif
 	struct platform_device *dev;
 	spinlock_t lock;
-	u16 status;
-	struct regulator *udc_vcc_d, *udc_vcc_a;
-        int udc_enabled;
 	atomic_t usb_status;
 	int	(*get_usb_mode)(void);
 	int	(*change_usb_mode)(int mode);
 	struct mutex		mutex;
 	struct host_notify_dev * ndev;
+	u16 status;
 	int ep0state;
 	struct s3c_ep ep[S3C_MAX_ENDPOINTS];
 
 	unsigned char usb_address;
 
 	unsigned req_pending:1, req_std:1, req_config:1;
+
+	struct regulator *udc_vcc_d, *udc_vcc_a;
+    int udc_enabled;
 };
 
 extern struct s3c_udc *the_controller;

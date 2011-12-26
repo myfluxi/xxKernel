@@ -1,7 +1,7 @@
 #
 # Automatically generated make config: don't edit
 # Linux kernel version: 2.6.35.14
-# Sat Nov 11 20:34:22 2011
+# Mon Dec 26 21:14:28 2011
 #
 CONFIG_ARM=y
 CONFIG_HAVE_PWM=y
@@ -91,7 +91,7 @@ CONFIG_INITRAMFS_SOURCE=""
 CONFIG_RD_GZIP=y
 # CONFIG_RD_BZIP2 is not set
 # CONFIG_RD_LZMA is not set
-CONFIG_RD_XZ=y
+# CONFIG_RD_XZ is not set
 # CONFIG_RD_LZO is not set
 # CONFIG_CC_OPTIMIZE_FOR_SIZE is not set
 CONFIG_SYSCTL=y

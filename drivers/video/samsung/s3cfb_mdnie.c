@@ -143,6 +143,14 @@ u8 current_mDNIe_OutDoor_OnOff = FALSE;
 
 int mDNIe_Tuning_Mode = FALSE;
 
+static u16 user_mode = 0x0000;
+static u16 user_mcm_cb = 0x8000;
+static u16 user_mcm_cr = 0x0080;
+static bool user_de_control_enabled = false;
+static u16 user_de_sharpness = 0x0000;
+static u16 user_de_threshold = 0x003F;
+static u16 user_cs_gain = 0x0000;
+
 #ifdef CONFIG_FB_S3C_MDNIE_TUNINGMODE_FOR_BACKLIGHT
 
 extern int pre_val;
@@ -338,7 +346,6 @@ int s3c_mdnie_hw_init(void)
 
 int s3c_mdnie_unmask(void)
 {
-
 	s3c_mdnie_writel(0x0, S3C_MDNIE_rR40);
 
 	return 0;
@@ -391,10 +398,9 @@ int s3c_mdnie_setup(void)
 }
 void mDNIe_Set_Mode(Lcd_mDNIe_UI mode, u8 mDNIe_Outdoor_OnOff)
 {
-	
 	if(!g_mdine_enable) {
 		printk(KERN_ERR"[mDNIE WARNING] mDNIE engine is OFF. So you cannot set mDnie Mode correctly.\n");
-
+		return;
 	}
 	switch(current_mDNIe_user_mode){
 		case  mDNIe_DYNAMIC:
@@ -556,7 +562,7 @@ void mDNIe_User_Select_Mode(Lcd_mDNIe_User_Set mode)
 {
 	if(!g_mdine_enable) {
 		printk(KERN_ERR"[mDNIE WARNING] mDNIE engine is OFF. So you cannot set mDnie Mode correctly.\n");
-
+		return;
 	}
 	switch (mode) {
 	case mDNIe_DYNAMIC:  
@@ -580,7 +586,7 @@ void mDNIe_init_Mode_Set(Lcd_mDNIe_User_Set mode)
 {
 	if(!g_mdine_enable) {
 		printk(KERN_ERR" [mDNIE WARNING] mDNIE engine is OFF. So you cannot set mDnie Mode correctly.\n");
-
+		return;
 	}
 	mDNIe_User_Select_Mode(current_mDNIe_user_mode);
 	mDNIe_Set_Mode(current_mDNIe_Mode, current_mDNIe_OutDoor_OnOff);
@@ -874,6 +880,205 @@ static ssize_t mdnieset_outdoor_file_cmd_store(struct device *dev,
 
 static DEVICE_ATTR(mdnieset_outdoor_file_cmd, 0664, mdnieset_outdoor_file_cmd_show, mdnieset_outdoor_file_cmd_store);
 
+
+static ssize_t mdnieset_user_mode_cmd_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	return sprintf(buf, "%d\n", user_mode);
+}
+
+static ssize_t mdnieset_user_mode_cmd_store(struct device *dev,
+		struct device_attribute *attr, const char *buf, size_t size)
+{
+	int value = 0;
+
+	sscanf(buf, "%d", &value);
+
+	if (value == 0x0000 || value == 0x0006 || value == 0x0041 || value == 0x0045)
+		user_mode = value;
+	else {
+		printk(KERN_ERR "[mDNIe] invalid user mode value.\n");
+		user_mode = 0x0000;
+	}
+
+	mDNIe_User_Select_Mode(current_mDNIe_user_mode);
+	mDNIe_Set_Mode(current_mDNIe_Mode, current_mDNIe_OutDoor_OnOff);
+
+	return size;
+}
+
+static DEVICE_ATTR(mdnieset_user_mode_cmd, 0664, mdnieset_user_mode_cmd_show, mdnieset_user_mode_cmd_store);
+
+
+static ssize_t mdnieset_user_mcm_cb_cmd_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	return sprintf(buf, "%u\n", (user_mcm_cb >> 8));
+}
+
+static ssize_t mdnieset_user_mcm_cb_cmd_store(struct device *dev,
+		struct device_attribute *attr, const char *buf, size_t size)
+{
+	int value;
+
+	sscanf(buf, "%d", &value);
+
+	if (value >= 0 || value <= 255)
+		user_mcm_cb = (u16)(value << 8);
+	else {
+		printk(KERN_ERR "[mDNIe] invalid user mcm cb value. 0 <= value <= 255\n");
+		user_mcm_cb = (128 << 8);
+	}
+
+	mDNIe_User_Select_Mode(current_mDNIe_user_mode);
+	mDNIe_Set_Mode(current_mDNIe_Mode, current_mDNIe_OutDoor_OnOff);
+
+	return size;
+}
+
+static DEVICE_ATTR(mdnieset_user_mcm_cb_cmd, 0664, mdnieset_user_mcm_cb_cmd_show, mdnieset_user_mcm_cb_cmd_store);
+
+
+static ssize_t mdnieset_user_mcm_cr_cmd_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	return sprintf(buf, "%u\n", user_mcm_cr);
+}
+
+static ssize_t mdnieset_user_mcm_cr_cmd_store(struct device *dev,
+		struct device_attribute *attr, const char *buf, size_t size)
+{
+	int value;
+
+	sscanf(buf, "%d", &value);
+
+	if (value >= 0 || value <= 255)
+		user_mcm_cr = (u16)value;
+	else {
+		printk(KERN_ERR "[mDNIe] invalid user mcm cr value. 0 <= value <= 255\n");
+		user_mcm_cr = 128;
+	}
+
+	mDNIe_User_Select_Mode(current_mDNIe_user_mode);
+	mDNIe_Set_Mode(current_mDNIe_Mode, current_mDNIe_OutDoor_OnOff);
+
+	return size;
+}
+
+static DEVICE_ATTR(mdnieset_user_mcm_cr_cmd, 0664, mdnieset_user_mcm_cr_cmd_show, mdnieset_user_mcm_cr_cmd_store);
+
+
+static ssize_t mdnieset_user_de_control_enabled_cmd_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	return sprintf(buf, "%d\n", user_de_control_enabled);
+}
+
+static ssize_t mdnieset_user_de_control_enabled_cmd_store(struct device *dev,
+		struct device_attribute *attr, const char *buf, size_t size)
+{
+	int value;
+
+	sscanf(buf, "%d", &value);
+
+	user_de_control_enabled = value ? true : false;
+
+	mDNIe_User_Select_Mode(current_mDNIe_user_mode);
+	mDNIe_Set_Mode(current_mDNIe_Mode, current_mDNIe_OutDoor_OnOff);
+
+	return size;
+}
+
+static DEVICE_ATTR(mdnieset_user_de_control_enabled_cmd, 0664, mdnieset_user_de_control_enabled_cmd_show, mdnieset_user_de_control_enabled_cmd_store);
+
+
+static ssize_t mdnieset_user_de_sharpness_cmd_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	return sprintf(buf, "%u\n", user_de_sharpness);
+}
+
+static ssize_t mdnieset_user_de_sharpness_cmd_store(struct device *dev,
+		struct device_attribute *attr, const char *buf, size_t size)
+{
+	int value;
+
+	sscanf(buf, "%d", &value);
+
+	if (value >= 0 || value <= 255)
+		user_de_sharpness = (u16)value;
+	else {
+		printk(KERN_ERR "[mDNIe] invalid user de sharpness value. 0 <= value <= 255\n");
+		user_de_sharpness = 0x0000;
+	}
+
+	mDNIe_User_Select_Mode(current_mDNIe_user_mode);
+	mDNIe_Set_Mode(current_mDNIe_Mode, current_mDNIe_OutDoor_OnOff);
+
+	return size;
+}
+
+static DEVICE_ATTR(mdnieset_user_de_sharpness_cmd, 0664, mdnieset_user_de_sharpness_cmd_show, mdnieset_user_de_sharpness_cmd_store);
+
+
+static ssize_t mdnieset_user_de_threshold_cmd_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	return sprintf(buf, "%u\n", user_de_threshold);
+}
+
+static ssize_t mdnieset_user_de_threshold_cmd_store(struct device *dev,
+		struct device_attribute *attr, const char *buf, size_t size)
+{
+	int value;
+
+	sscanf(buf, "%d", &value);
+
+	if (value >= 0 || value <= 255)
+		user_de_threshold = (u16)value;
+	else {
+		printk(KERN_ERR "[mDNIe] invalid user de threshold value. 0 <= value <= 255\n");
+		user_de_threshold = 0x003F;
+	}
+
+	mDNIe_User_Select_Mode(current_mDNIe_user_mode);
+	mDNIe_Set_Mode(current_mDNIe_Mode, current_mDNIe_OutDoor_OnOff);
+
+	return size;
+}
+
+static DEVICE_ATTR(mdnieset_user_de_threshold_cmd, 0664, mdnieset_user_de_threshold_cmd_show, mdnieset_user_de_threshold_cmd_store);
+
+
+static ssize_t mdnieset_user_cs_gain_cmd_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	return sprintf(buf, "%u\n", user_cs_gain);
+}
+
+static ssize_t mdnieset_user_cs_gain_cmd_store(struct device *dev,
+		struct device_attribute *attr, const char *buf, size_t size)
+{
+	int value;
+
+	sscanf(buf, "%d", &value);
+
+	if (value >= 0 || value <= 255)
+		user_cs_gain = (u16)value;
+	else {
+		printk(KERN_ERR "[mDNIe] invalid user cs gain value. 0 <= value <= 255\n");
+		user_cs_gain = 0x0000;
+	}
+
+	mDNIe_User_Select_Mode(current_mDNIe_user_mode);
+	mDNIe_Set_Mode(current_mDNIe_Mode, current_mDNIe_OutDoor_OnOff);
+
+	return size;
+}
+
+static DEVICE_ATTR(mdnieset_user_cs_gain_cmd, 0664, mdnieset_user_cs_gain_cmd_show, mdnieset_user_cs_gain_cmd_store);
+
+
 void init_mdnie_class(void)
 {
 	mdnieset_ui_class = class_create(THIS_MODULE, "mdnieset_ui");
@@ -892,6 +1097,28 @@ void init_mdnie_class(void)
 
 	if (device_create_file(switch_mdnieset_ui_dev, &dev_attr_mdnieset_init_file_cmd) < 0)
 		pr_err("Failed to create device file(%s)!\n", dev_attr_mdnieset_init_file_cmd.attr.name);
+
+	if (device_create_file(switch_mdnieset_ui_dev, &dev_attr_mdnieset_user_mode_cmd) < 0)
+		pr_err("Failed to create device file(%s)!\n", dev_attr_mdnieset_user_mode_cmd.attr.name);
+
+	if (device_create_file(switch_mdnieset_ui_dev, &dev_attr_mdnieset_user_mcm_cb_cmd) < 0)
+		pr_err("Failed to create device file(%s)!\n", dev_attr_mdnieset_user_mcm_cb_cmd.attr.name);
+
+	if (device_create_file(switch_mdnieset_ui_dev, &dev_attr_mdnieset_user_mcm_cr_cmd) < 0)
+		pr_err("Failed to create device file(%s)!\n", dev_attr_mdnieset_user_mcm_cr_cmd.attr.name);
+
+	if (device_create_file(switch_mdnieset_ui_dev, &dev_attr_mdnieset_user_de_sharpness_cmd) < 0)
+		pr_err("Failed to create device file(%s)!\n", dev_attr_mdnieset_user_de_sharpness_cmd.attr.name);
+
+	if (device_create_file(switch_mdnieset_ui_dev, &dev_attr_mdnieset_user_de_threshold_cmd) < 0)
+		pr_err("Failed to create device file(%s)!\n", dev_attr_mdnieset_user_de_threshold_cmd.attr.name);
+
+	if (device_create_file(switch_mdnieset_ui_dev, &dev_attr_mdnieset_user_cs_gain_cmd) < 0)
+		pr_err("Failed to create device file(%s)!\n", dev_attr_mdnieset_user_cs_gain_cmd.attr.name);
+
+	if (device_create_file(switch_mdnieset_ui_dev, &dev_attr_mdnieset_user_de_control_enabled_cmd) < 0)
+		pr_err("Failed to create device file(%s)!\n", dev_attr_mdnieset_user_de_control_enabled_cmd.attr.name);
+
 
 	mdnieset_outdoor_class = class_create(THIS_MODULE, "mdnieset_outdoor");
 	if (IS_ERR(mdnieset_outdoor_class))
@@ -1125,10 +1352,14 @@ static int parse_text(char *src, int len)
 	char *sstart;
 	char *c;
 	unsigned int data1, data2;
+	unsigned int reg_mcm_mask_index, reg_mcm_cb_index, reg_mcm_cr_index;
+	unsigned int reg_de_sharpness_index, reg_de_threshold_index, reg_cs_gain_index;
 
 	c = src;
 	count = 0;
 	sstart = c;
+	reg_mcm_mask_index = reg_mcm_cb_index = reg_mcm_cr_index = 0;
+	reg_de_sharpness_index = reg_de_threshold_index = reg_cs_gain_index = 0;
 
 	for (i = 0; i < len; i++, c++) {
 		char a = *c;
@@ -1154,6 +1385,74 @@ static int parse_text(char *src, int len)
 		ret = sscanf(str_line[i], "0x%x,0x%x\n", &data1, &data2);
 		//printk(KERN_INFO "Result => [0x%2x 0x%4x] %s\n", data1, data2, (ret == 2) ? "Ok" : "Not available");
 		if (ret == 2) {
+			if (user_mode != 0x0000) {
+				switch (data1) {
+					case 0x0001:
+						data2 = user_mode;
+						break;
+					case 0x0028: // register mask
+						if (user_mode == 0x0045 || user_mode == 0x0006) {
+							printk(KERN_INFO "user_mcm_cb=0x%x, user_mcm_cr=0x%x", user_mcm_cb, user_mcm_cr);
+							if (reg_mcm_mask_index) {
+								mDNIe_data[reg_mcm_mask_index+1]  = 0x0064;
+							} else {
+								mDNIe_data[index++] = (u16)(0x005b * 4);
+								mDNIe_data[index++]  = 0x0064;
+							}
+							if (reg_mcm_cb_index) {
+								mDNIe_data[reg_mcm_cb_index+1]  = user_mcm_cb;
+							} else {
+								mDNIe_data[index++] = (u16)(0x0063 * 4);
+								mDNIe_data[index++]  = user_mcm_cb;
+							}
+							if (reg_mcm_cr_index) {
+								mDNIe_data[reg_mcm_cr_index+1]  = user_mcm_cr;
+							} else {
+								mDNIe_data[index++] = (u16)(0x0065 * 4);
+								mDNIe_data[index++]  = user_mcm_cr;
+							}
+						}
+						if (user_de_control_enabled) {
+							if (reg_de_sharpness_index) {
+								// noop :mDNIe_data[reg_de_sharpness_index+1]  = user_de_sharpness;
+							} else {
+								mDNIe_data[index++] = (u16)(0x003b * 4);
+								mDNIe_data[index++]  = user_de_sharpness;
+							}
+							if (reg_cs_gain_index) {
+								// noop : mDNIe_data[reg_cs_gain_index+1]  = user_cs_gain;
+							} else {
+								mDNIe_data[index++] = (u16)(0x003f * 4);
+								mDNIe_data[index++]  = user_cs_gain;
+							}
+							if (reg_de_threshold_index) {
+								// noop : mDNIe_data[reg_de_threshold_index+1]  = user_de_threshold;
+							} else {
+								mDNIe_data[index++] = (u16)(0x0042 * 4);
+								mDNIe_data[index++]  = user_de_threshold;
+							}
+						}
+						break;
+					case 0x005b: // MCM type
+						reg_mcm_mask_index = index;
+						break;
+					case 0x0063: // MCM cb
+						reg_mcm_cb_index = index;
+						break;
+					case 0x0065: // MCM cr
+						reg_mcm_cr_index = index;
+						break;
+					case 0x003b: // DE SHARPNESS
+						reg_de_sharpness_index = index;
+						break;
+					case 0x003f: // CS Gain
+						reg_cs_gain_index = index;
+						break;
+					case 0x0042: // DE TH
+						reg_de_threshold_index = index;
+						break;
+				}
+			}
 			mDNIe_data[index++] = (u16)data1 * 4;
 			mDNIe_data[index++]  = (u16)data2;
 		}

@@ -38,9 +38,9 @@
 #include <linux/earlysuspend.h>
 #endif
 
-#define BOOT_GAMMA_LEVEL		10
+#define BOOT_GAMMA_LEVEL	10
 #define MAX_GAMMA_LEVEL		25
-#define GAMMA_TABLE_COUNT		21
+#define GAMMA_TABLE_COUNT	21
 
 #define SLEEPMSEC		0x1000
 #define ENDDEF			0x2000
@@ -58,6 +58,10 @@
 #define MAX_BL 255
 #define MAX_GAMMA_VALUE 24
 
+#define MIN_GAMMA_ADJUST -50
+#define MAX_GAMMA_ADJUST  50
+#define GAMMA_DATA_SIZE   (48*sizeof(unsigned short))
+
 static unsigned int get_lcdtype;
 module_param_named(get_lcdtype, get_lcdtype, uint, 0444);
 MODULE_PARM_DESC(get_lcdtype, " get_lcdtype  in Bootloader");
@@ -74,12 +78,18 @@ struct ld9040 {
 	unsigned int			ldi_enable;
 	unsigned int 			acl_enable;
 	unsigned int 			cur_acl;
+	unsigned int			user_lcdtype;
+	unsigned int			current_user_lcdtype;
+	signed int			user_gamma_adjust;
+	signed int			current_user_gamma_adjust;
 	struct mutex	lock;
 	struct lcd_device		*ld;
 	struct backlight_device		*bd;
 	struct lcd_platform_data	*lcd_pd;
 	struct early_suspend    early_suspend;
 };
+
+static signed short gamma_adjust_map[] = { 3, 3, 3, 3, 0, 1, 0, 1, 5, 2, 4, 0, 1, 0, 3, 3, 3, 2, 0, 1 };
 
 static int ld9040_spi_write_byte(struct ld9040 *lcd, int addr, int data)
 {
@@ -140,7 +150,7 @@ static int get_gamma_value_from_bl(int bl)
 
 	if(bl >= MIN_BL){
 		gamma_val_x10 = 10 *(MAX_GAMMA_VALUE-1)*bl/(MAX_BL-MIN_BL) + (10 - 10*(MAX_GAMMA_VALUE-1)*(MIN_BL)/(MAX_BL-MIN_BL));
-		gamma_value=(gamma_val_x10 +5)/10;
+		gamma_value=(gamma_val_x10)/10;
 	}else{
 		gamma_value =0;
 	}
@@ -149,27 +159,48 @@ static int get_gamma_value_from_bl(int bl)
 }
 static int ld9040_gamma_ctl(struct ld9040 *lcd)
 {
-	int ret = 0;
+	int ret = 0, i;
 	const unsigned short *gamma;
+	unsigned short gamma_adjust[100];
 	struct ld9040_panel_data *pdata = lcd->lcd_pd->pdata;
 
-	if (get_lcdtype == LCDTYPE_M2) { /* M2 */
+	/* M2 */
+	if (lcd->user_lcdtype == LCDTYPE_M2) {
 		if (lcd->gamma_mode)
 			gamma = pdata->gamma19_table[lcd->bl];
 		else
 			gamma = pdata->gamma22_table[lcd->bl];
-	} else if (get_lcdtype == LCDTYPE_SM2_A2) { /* SM2 A2 line */
+	/* SM2 A2 line */
+	} else if (lcd->user_lcdtype == LCDTYPE_SM2_A2) {
 		if (lcd->gamma_mode)
 			gamma = pdata->gamma_sm2_a2_19_table[lcd->bl];
 		else
 			gamma = pdata->gamma_sm2_a2_22_table[lcd->bl];
-	} else { /* SM2 A1 line*/
+	/* SM2 A1 line*/
+	} else {
 		if (lcd->gamma_mode)
 			gamma = pdata->gamma_sm2_a1_19_table[lcd->bl];
 		else
 			gamma = pdata->gamma_sm2_a1_22_table[lcd->bl];
 	}
-	ret = ld9040_panel_send_sequence(lcd, gamma);
+
+	if (lcd->user_gamma_adjust != 0) {
+		printk("*** : debug gamma size=%d, *gamma_adjust_map size=%d\n", GAMMA_DATA_SIZE, ARRAY_SIZE(gamma_adjust_map));
+		memcpy(gamma_adjust, gamma, GAMMA_DATA_SIZE);
+		for (i = 0; i < ARRAY_SIZE(gamma_adjust_map); i++) {
+			if (gamma_adjust_map[i] != 0) {
+				signed short value = gamma_adjust[(i+1)*2+1];
+				value += lcd->user_gamma_adjust / gamma_adjust_map[i];
+				if (value > 0xFF) value = 0xFF;
+				else if (value < 0) value = 0x00;
+				gamma_adjust[(i+1)*2+1] = (unsigned short)value;
+			}
+		}
+		ret = ld9040_panel_send_sequence(lcd, gamma_adjust);
+	} else {
+		ret = ld9040_panel_send_sequence(lcd, gamma);
+	}
+
 	if (ret) {
 		ret = -1;
 		goto gamma_err;
@@ -186,7 +217,7 @@ static int ld9040_set_elvss(struct ld9040 *lcd)
 	int ret = 0;
 	struct ld9040_panel_data *pdata = lcd->lcd_pd->pdata;
 
-	if (get_lcdtype == LCDTYPE_M2) {  /* for M2 */
+	if (lcd->user_lcdtype == LCDTYPE_M2) {  /* for M2 */
 		if (lcd->acl_enable) {			
 				switch (lcd->bl) {
 				case 0 ... 14: /* 30cd ~ 200cd */
@@ -217,36 +248,36 @@ static int ld9040_set_elvss(struct ld9040 *lcd)
 				}
 		}
 	} else {/* for SM2 (A1 line or A2 line) */
-	if (lcd->acl_enable) {
-				switch (lcd->bl) {
-				case 0 ... 14: /* 30cd ~ 200cd */
-					ret = ld9040_panel_send_sequence(lcd, pdata->elvss_sm2_table[0]);
-					break;
-				case 15 ... 24: /* 210cd ~ 300cd */
-					ret = ld9040_panel_send_sequence(lcd, pdata->elvss_sm2_table[1]);
-					break;
-				default:
-					break;
-				}
-	} else {
-				switch (lcd->bl) {
-				case 0 ... 4: /* 30cd ~ 100cd */
-					ret = ld9040_panel_send_sequence(lcd, pdata->elvss_sm2_table[0]);
-					break;
-				case 5 ... 10: /* 110cd ~ 160cd */
-					ret = ld9040_panel_send_sequence(lcd, pdata->elvss_sm2_table[1]);
-					break;
-				case 11 ... 14: /* 170cd ~ 200cd */
-					ret = ld9040_panel_send_sequence(lcd, pdata->elvss_sm2_table[2]);
-					break;
-				case 15 ... 24: /* 210cd ~ 300cd */
-					ret = ld9040_panel_send_sequence(lcd, pdata->elvss_sm2_table[3]);
-					break;
-				default:
-					break;
-				}
+		if (lcd->acl_enable) {
+					switch (lcd->bl) {
+					case 0 ... 14: /* 30cd ~ 200cd */
+						ret = ld9040_panel_send_sequence(lcd, pdata->elvss_sm2_table[0]);
+						break;
+					case 15 ... 24: /* 210cd ~ 300cd */
+						ret = ld9040_panel_send_sequence(lcd, pdata->elvss_sm2_table[1]);
+						break;
+					default:
+						break;
+					}
+		} else {
+					switch (lcd->bl) {
+					case 0 ... 4: /* 30cd ~ 100cd */
+						ret = ld9040_panel_send_sequence(lcd, pdata->elvss_sm2_table[0]);
+						break;
+					case 5 ... 10: /* 110cd ~ 160cd */
+						ret = ld9040_panel_send_sequence(lcd, pdata->elvss_sm2_table[1]);
+						break;
+					case 11 ... 14: /* 170cd ~ 200cd */
+						ret = ld9040_panel_send_sequence(lcd, pdata->elvss_sm2_table[2]);
+						break;
+					case 15 ... 24: /* 210cd ~ 300cd */
+						ret = ld9040_panel_send_sequence(lcd, pdata->elvss_sm2_table[3]);
+						break;
+					default:
+						break;
+					}
+		}
 	}
-}
 	dev_dbg(lcd->dev, "level  = %d\n", lcd->bl);
 
 	if (ret) {
@@ -341,7 +372,7 @@ static int ld9040_ldi_init(struct ld9040 *lcd)
 {
 	int ret, i;
 	struct ld9040_panel_data *pdata = lcd->lcd_pd->pdata;
-	if (get_lcdtype == LCDTYPE_M2) {  /* for M2 */
+	if (lcd->user_lcdtype == LCDTYPE_M2) {  /* for M2 */
 		const unsigned short *init_seq[] = {
 			pdata->seq_user_set,
 			pdata->seq_displayctl_set,
@@ -360,7 +391,7 @@ static int ld9040_ldi_init(struct ld9040 *lcd)
 				break;
 		}
 
-	} else if (get_lcdtype == LCDTYPE_SM2_A2) { /* for SM2 (A1 line or A2 line) */
+	} else if (lcd->user_lcdtype == LCDTYPE_SM2_A2) { /* for SM2 (A1 line or A2 line) */
 		const unsigned short *init_seq_sm2[] = {
 			pdata->seq_user_set,
 			pdata->seq_displayctl_set,
@@ -428,10 +459,10 @@ static int update_brightness(struct ld9040 *lcd)
 {
 	int ret;
 
-        ret = ld9040_gamma_ctl(lcd);
-        if (ret) {
-                return -1;
-        }
+	ret = ld9040_gamma_ctl(lcd);
+	if (ret) {
+		return -1;
+	}
 	ret = ld9040_set_elvss(lcd);
 	if (ret) {
 		return -1;
@@ -598,7 +629,7 @@ static int ld9040_set_brightness(struct backlight_device *bd)
 
 	if ((lcd->ldi_enable) && (lcd->current_brightness != lcd->bl)) {
 		ret = update_brightness(lcd);
-		dev_info(lcd->dev, "(id=%d) brightness=%d, bl=%d\n", get_lcdtype, bd->props.brightness, lcd->bl);
+		dev_info(lcd->dev, "(id=%d) brightness=%d, bl=%d\n", lcd->user_lcdtype, bd->props.brightness, lcd->bl);
 		if (ret < 0) {
 			/*
 			dev_err(&bd->dev, "skip update brightness. because ld9040 is on suspend state...\n");
@@ -673,7 +704,7 @@ device_attribute *attr, char *buf)
 	char temp[15];
 	switch (get_lcdtype) {
 	case LCDTYPE_SM2_A1:
-		sprintf(temp, "OCTA : SM2 (A1 line)\n");
+		sprintf(temp, "OCTA : SM2 (A1 Line)\n");
 		strcat(buf, temp);
 		break;
 	case LCDTYPE_M2:
@@ -681,7 +712,7 @@ device_attribute *attr, char *buf)
 		strcat(buf, temp);
 		break;
 	case LCDTYPE_SM2_A2:
-		sprintf(temp, "OCTA : SM2 (A2 line)\n");
+		sprintf(temp, "OCTA : SM2 (A2 Line)\n");
 		strcat(buf, temp);
 		break;
 	default:
@@ -743,7 +774,7 @@ static ssize_t ld9040_sysfs_store_gamma_mode(struct device *dev,
 	if (lcd->ldi_enable)
 	{
 		if((lcd->current_brightness == lcd->bl) && (lcd->current_gamma_mode == lcd->gamma_mode))
-			printk("there is no gamma_mode & brightness changed\n");	
+			printk("there is no gamma_mode & brightness changed\n");
 		else	
 			ld9040_gamma_ctl(lcd);
 	}	
@@ -752,6 +783,176 @@ static ssize_t ld9040_sysfs_store_gamma_mode(struct device *dev,
 
 static DEVICE_ATTR(gamma_mode, 0664,
 		ld9040_sysfs_show_gamma_mode, ld9040_sysfs_store_gamma_mode);
+
+
+static ssize_t ld9040_sysfs_show_user_lcdtype(struct device *dev,
+				      struct device_attribute *attr, char *buf)
+{
+	struct ld9040 *lcd = dev_get_drvdata(dev);
+	char temp[30];
+	switch (lcd->user_lcdtype) {
+	case LCDTYPE_SM2_A1:
+		sprintf(temp, "SM2 (A1 line)\n");
+		strcat(buf, temp);
+		break;
+	case LCDTYPE_M2:
+		sprintf(temp, "M2\n");
+		strcat(buf, temp);
+		break;
+	case LCDTYPE_SM2_A2:
+		sprintf(temp, "SM2 (A2 line)\n");
+		strcat(buf, temp);
+		break;
+	default:
+		sprintf(temp, "error\n");
+		strcat(buf, temp);
+		dev_info(dev, "read octa lcd type failed. \n");
+		break;
+	}
+	return strlen(buf);
+}
+
+static ssize_t ld9040_sysfs_store_user_lcdtype(struct device *dev,
+				       struct device_attribute *attr,
+				       const char *buf, size_t len)
+{
+	struct ld9040 *lcd = dev_get_drvdata(dev);
+	int rc;
+
+	rc = strict_strtoul(buf, 0, (unsigned long *)&lcd->user_lcdtype);
+
+	if (rc < 0)
+		return rc;
+
+	if (lcd->user_lcdtype != LCDTYPE_M2
+	&&	lcd->user_lcdtype != LCDTYPE_SM2_A1
+	&&	lcd->user_lcdtype != LCDTYPE_SM2_A2) {
+		lcd->user_lcdtype = get_lcdtype;
+		dev_err(dev, "there are only 3 types of lcdtype mode(0:M2, 1:SM2_A1, 2:SM2_A2)\n");
+	} else {
+		dev_info(dev, "%s :: user_lcdtype=%d\n", __FUNCTION__, lcd->user_lcdtype);
+	}
+	
+	if (lcd->ldi_enable) {
+		if((lcd->current_brightness == lcd->bl) && (lcd->current_user_lcdtype == lcd->user_lcdtype)) {
+			printk("there is no lcdtype & brightness changed\n");
+		} else {
+			if (update_brightness(lcd) == 0) {
+				lcd->current_user_lcdtype = lcd->user_lcdtype;
+			}
+		}
+	}
+	return len;
+}
+
+static DEVICE_ATTR(user_lcdtype, 0664,
+		ld9040_sysfs_show_user_lcdtype, ld9040_sysfs_store_user_lcdtype);
+
+
+static ssize_t ld9040_sysfs_show_user_gamma_adjust(struct device *dev,
+				      struct device_attribute *attr, char *buf)
+{
+	struct ld9040 *lcd = dev_get_drvdata(dev);
+	return sprintf(buf, "%d\n", lcd->user_gamma_adjust);
+}
+
+static ssize_t ld9040_sysfs_store_user_gamma_adjust(struct device *dev,
+				       struct device_attribute *attr,
+				       const char *buf, size_t len)
+{
+	struct ld9040 *lcd = dev_get_drvdata(dev);
+	int rc;
+
+	rc = strict_strtol(buf, 0, (long *)&lcd->user_gamma_adjust);
+
+	if (rc < 0)
+		return rc;
+
+	if ((lcd->user_gamma_adjust < MIN_GAMMA_ADJUST)
+	||  (lcd->user_gamma_adjust > MAX_GAMMA_ADJUST)) {
+		dev_err(dev, "invalid user_gamma_adjust value. -%d < value < %d\n", MIN_GAMMA_ADJUST, MAX_GAMMA_ADJUST);
+		lcd->user_gamma_adjust = 0;
+	} else {
+		dev_info(dev, "%s :: user_gamma_adjust=%d\n", __FUNCTION__, lcd->user_gamma_adjust);
+	}
+
+	if (lcd->ldi_enable)
+	{
+		if((lcd->current_user_gamma_adjust == lcd->user_gamma_adjust) && (lcd->current_user_lcdtype == lcd->user_lcdtype))
+			printk("there is no gamma shift & brightness changed\n");	
+		else
+		{
+			dev_info(lcd->dev, "user_gamma_adjust update : (id=%d) bl=%d\n", lcd->user_lcdtype, lcd->bl);
+			if (update_brightness(lcd) == 0) {
+				lcd->current_user_gamma_adjust = lcd->user_gamma_adjust;
+			} else {
+				lcd->user_gamma_adjust = lcd->current_user_gamma_adjust;
+			}
+		}
+	}
+	return len;
+}
+
+static DEVICE_ATTR(user_gamma_adjust, 0664,
+		ld9040_sysfs_show_user_gamma_adjust, ld9040_sysfs_store_user_gamma_adjust);
+
+static ssize_t ld9040_sysfs_show_user_gamma_adjust_table(struct device *dev,
+				      struct device_attribute *attr, char *buf)
+{
+	return sprintf(buf, "%d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d\n",
+						gamma_adjust_map[0],
+						gamma_adjust_map[1],
+						gamma_adjust_map[2],
+						gamma_adjust_map[3],
+						gamma_adjust_map[4],
+						gamma_adjust_map[5],
+						gamma_adjust_map[6],
+						gamma_adjust_map[7],
+						gamma_adjust_map[8],
+						gamma_adjust_map[9],
+						gamma_adjust_map[10],
+						gamma_adjust_map[11],
+						gamma_adjust_map[12],
+						gamma_adjust_map[13],
+						gamma_adjust_map[14],
+						gamma_adjust_map[15],
+						gamma_adjust_map[16],
+						gamma_adjust_map[17],
+						gamma_adjust_map[18],
+						gamma_adjust_map[19]);
+}
+
+static ssize_t ld9040_sysfs_store_user_gamma_adjust_table(struct device *dev,
+				       struct device_attribute *attr,
+				       const char *buf, size_t len)
+{
+	struct ld9040 *lcd = dev_get_drvdata(dev);
+	int i, j, k;
+	long v = 0;
+	char temp[50];
+
+	j = k = 0;
+	for (i = 0; i < len; i++) {
+		if (buf[i] != ' ') {
+			temp[j++] = buf[i];
+		} else {
+			temp[j] = '\0';
+			j = 0;
+			strict_strtol(temp, 0, &v);
+			dev_info(lcd->dev, "user_gamma_adjust_table update : gamma_adjust_map[%d] = %d", k, (int)v);
+			gamma_adjust_map[k++] = (int)v;
+		}
+	}
+	temp[j] = '\0';
+	strict_strtol(temp, 0, &v);
+	dev_info(lcd->dev, "user_gamma_adjust_table update : gamma_adjust_map[%d] = %d", k, (int)v);
+	gamma_adjust_map[k++] = (int)v;
+
+	return len;
+}
+
+static DEVICE_ATTR(user_gamma_adjust_table, 0664,
+		ld9040_sysfs_show_user_gamma_adjust_table, ld9040_sysfs_store_user_gamma_adjust_table);
 
 static ssize_t ld9040_sysfs_show_gamma_table(struct device *dev,
 				      struct device_attribute *attr, char *buf)
@@ -895,6 +1096,10 @@ static int ld9040_probe(struct spi_device *spi)
 	lcd->current_brightness = lcd->bl;
 	lcd->gamma_mode = 0;
 	lcd->current_gamma_mode = 0;
+	lcd->user_lcdtype = get_lcdtype;
+	lcd->current_user_lcdtype = get_lcdtype;
+	lcd->user_gamma_adjust = 0;
+	lcd->current_user_gamma_adjust = 0;
 
 	lcd->acl_enable = 0;
 	lcd->cur_acl = 0;
@@ -929,6 +1134,18 @@ static int ld9040_probe(struct spi_device *spi)
 		dev_err(&(spi->dev), "failed to add sysfs entries\n");
 
 	ret = device_create_file(&(spi->dev), &dev_attr_lcd_power);
+	if (ret < 0)
+		dev_err(&(spi->dev), "failed to add sysfs entries\n");
+
+	ret = device_create_file(&(spi->dev), &dev_attr_user_lcdtype);
+	if (ret < 0)
+		dev_err(&(spi->dev), "failed to add sysfs entries\n");
+
+	ret = device_create_file(&(spi->dev), &dev_attr_user_gamma_adjust);
+	if (ret < 0)
+		dev_err(&(spi->dev), "failed to add sysfs entries\n");
+
+	ret = device_create_file(&(spi->dev), &dev_attr_user_gamma_adjust_table);
 	if (ret < 0)
 		dev_err(&(spi->dev), "failed to add sysfs entries\n");
 

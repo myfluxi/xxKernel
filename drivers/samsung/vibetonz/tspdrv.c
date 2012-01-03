@@ -104,13 +104,8 @@ static int g_nMajor;
 #endif
 
 /* timed_output */
-#if 1
-#define VIBRATOR_PERIOD	38022	/* 128 * 205 = 26.240 */
-#else
-#define VIBRATOR_PERIOD	22400	/* 128 * 207 = 26.496 */
-#endif
-
-#define VIBRATOR_DUTY	34220
+#define VIBRATOR_PERIOD		44643	/* 128 * 175 = 22.4KHz */
+#define VIBRATOR_DUTY		40178	/* 90% of period */
 
 
 static void _set_vibetonz_work(struct work_struct *unused);
@@ -673,21 +668,19 @@ static int ioctl(struct inode *inode, struct file *file, unsigned int cmd, unsig
 
 	case TSPDRV_MAGIC_NUMBER:
 		file->private_data = (void *)TSPDRV_MAGIC_NUMBER;
-                DbgOut((KERN_INFO "tspdrv: TSPDRV_MAGIC_NUMBER\n"));
 		break;
 
 	case TSPDRV_ENABLE_AMP:
 		wake_lock(&vib_wake_lock);
 		ImmVibeSPI_ForceOut_AmpEnable(arg);
 		DbgRecorderReset((arg));
-                DbgOut((KERN_INFO "tspdrv: TSPDRV_ENABLE_AMP\n"));
 		DbgRecord((arg, ";------- TSPDRV_ENABLE_AMP ---------\n"));
 		break;
 
 	case TSPDRV_DISABLE_AMP:
-		ImmVibeSPI_ForceOut_AmpDisable(arg);
+		if (!g_bStopRequested)
+			ImmVibeSPI_ForceOut_AmpDisable(arg);
 		wake_unlock(&vib_wake_lock);
-                DbgOut((KERN_INFO "tspdrv: TSPDRV_DISABLE_AMP\n"));
 		break;
 
 	case TSPDRV_GET_NUM_ACTUATORS:
@@ -734,5 +727,4 @@ static void platform_release(struct device *dev)
 {
 	DbgOut((KERN_INFO "tspdrv: platform_release.\n"));
 }
-
 

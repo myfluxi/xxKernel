@@ -170,23 +170,23 @@ void _mali_osk_mem_unmapioregion( u32 phys, u32 size, mali_io_address virt )
 mali_io_address _mali_osk_mem_allocioregion( u32 *phys, u32 size )
 {
 	void * virt;
+
  	MALI_DEBUG_ASSERT_POINTER( phys );
  	MALI_DEBUG_ASSERT( 0 == (size & ~_MALI_OSK_CPU_PAGE_MASK) );
  	MALI_DEBUG_ASSERT( 0 != size );
 
 	/* dma_alloc_* uses a limited region of address space. On most arch/marchs
-	 * 2 to 14 MiB is available. This should be enough for the page tables, which
-	 * currently is the only user of this function. */
+	* 2 to 14 MiB is available. This should be enough for the page tables, which
+	* currently is the only user of this function. */
 	virt = dma_alloc_coherent(NULL, size, phys, GFP_KERNEL | GFP_DMA );
 
 	MALI_DEBUG_PRINT(3, ("Page table virt: 0x%x = dma_alloc_coherent(size:%d, phys:0x%x, )\n", virt, size, phys));
 
- 	if ( NULL == virt )
- 	{
-		MALI_DEBUG_PRINT(1, ("allocioregion: Failed to allocate Pagetable memory, size=0x%.8X\n", size ));
-		MALI_DEBUG_PRINT(1, ("Solution: When configuring and building linux kernel, set CONSISTENT_DMA_SIZE to be 14 MB.\n"));
- 		return 0;
- 	}
+	if ( NULL == virt )
+	{
+		MALI_DEBUG_PRINT(5, ("allocioregion: Failed to allocate Pagetable memory, size=0x%.8X\n", size ));
+		return 0;
+	}
 
 	MALI_DEBUG_ASSERT( 0 == (*phys & ~_MALI_OSK_CPU_PAGE_MASK) );
 

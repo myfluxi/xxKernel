@@ -471,6 +471,7 @@ show_one(cpuinfo_max_freq, cpuinfo.max_freq);
 show_one(cpuinfo_transition_latency, cpuinfo.transition_latency);
 show_one(scaling_min_freq, min);
 show_one(scaling_max_freq, max);
+show_one(scaling_max_suspend_freq, max_suspend);
 show_one(scaling_cur_freq, cur);
 
 static int __cpufreq_set_policy(struct cpufreq_policy *data,
@@ -502,6 +503,7 @@ static ssize_t store_##file_name					\
 
 store_one(scaling_min_freq, min);
 store_one(scaling_max_freq, max);
+store_one(scaling_max_suspend_freq, max_suspend);
 
 /**
  * show_cpuinfo_cur_freq - current CPU frequency as detected by hardware
@@ -700,44 +702,6 @@ static ssize_t store_UV_mV_table(struct cpufreq_policy *policy,
               return count;
 }
 
-static unsigned int suspend_freq = SUSPEND_MAX_FREQUENCY;
-
-static ssize_t show_suspend_max_freq(struct cpufreq_policy *policy, char *buf)
-{
-    return sprintf(buf, "%d\n", suspend_freq);
-}
-
-static ssize_t store_suspend_max_freq(struct cpufreq_policy *policy,
-                                      const char *buf, size_t count)
-{
-	int ret;
-  
-	ret = sscanf(buf, "%d", &suspend_freq);
-	
-	if (ret != 1) {
-		return -EINVAL;
-	}
-	else
-	{
-		/* Correct bad user input */
-		if (suspend_freq <= 1600){
-			suspend_freq = suspend_freq * 1000;
-		}
-		/* Static safe range is sufficient */
-		if (suspend_freq < 100000){
-			suspend_freq = 100000;
-		}
-		else if (suspend_freq > 1200000){
-			suspend_freq = 1200000;
-		}
-
-		printk(KERN_INFO
-          		"cpufreq: New maximum suspend frequency: %d KHz\n", suspend_freq);
-
-		return count;
-	}
-}  
-
 /**
  * show_scaling_driver - show the current cpufreq HW/BIOS limitation
  */
@@ -765,11 +729,11 @@ cpufreq_freq_attr_ro(related_cpus);
 cpufreq_freq_attr_ro(affected_cpus);
 cpufreq_freq_attr_rw(scaling_min_freq);
 cpufreq_freq_attr_rw(scaling_max_freq);
+cpufreq_freq_attr_rw(scaling_max_suspend_freq);
 cpufreq_freq_attr_rw(scaling_governor);
 cpufreq_freq_attr_rw(scaling_setspeed);
 /* UV table */
 cpufreq_freq_attr_rw(UV_mV_table);
-cpufreq_freq_attr_rw(suspend_max_freq);
 
 static struct attribute *default_attrs[] = {
 	&cpuinfo_min_freq.attr,
@@ -777,6 +741,7 @@ static struct attribute *default_attrs[] = {
 	&cpuinfo_transition_latency.attr,
 	&scaling_min_freq.attr,
 	&scaling_max_freq.attr,
+	&scaling_max_suspend_freq.attr,
 	&affected_cpus.attr,
 	&related_cpus.attr,
 	&scaling_governor.attr,
@@ -784,7 +749,6 @@ static struct attribute *default_attrs[] = {
 	&scaling_available_governors.attr,
 	&scaling_setspeed.attr,
 	&UV_mV_table.attr,
-	&suspend_max_freq.attr,
 	NULL
 };
 
@@ -2121,7 +2085,7 @@ static void powersave_early_suspend(struct early_suspend *handler)
 			continue;
 		if (cpufreq_get_policy(&new_policy, cpu))
 			goto out;
-		new_policy.max = suspend_freq;
+		new_policy.max = cpu_policy->max_suspend;
 		new_policy.min = cpu_policy->cpuinfo.min_freq;
 		printk(KERN_INFO
 			"%s: set cpu%d freq in the %u-%u KHz range\n",

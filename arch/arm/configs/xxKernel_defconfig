@@ -1,7 +1,7 @@
 #
 # Automatically generated make config: don't edit
 # Linux kernel version: 2.6.35.14
-# Mon Dec 26 21:14:28 2011
+# Mon Dec 09 13:01:44 2012
 #
 CONFIG_ARM=y
 CONFIG_HAVE_PWM=y
@@ -432,7 +432,7 @@ CONFIG_S5PV310_ASV=y
 # BUS Frequency and Voltage scaling (Experimental)
 #
 CONFIG_S5PV310_BUSFREQ=y
-CONFIG_MACH_C1_UNDERVOLT=y
+# CONFIG_MACH_C1_UNDERVOLT is not set
 
 #
 # CPUFreq step up sequence selection: 2 step or 3 step

@@ -30,8 +30,6 @@
 #include <linux/mutex.h>
 #include <linux/earlysuspend.h>
 
-#define SUSPEND_MAX_FREQUENCY   500000 /* 500 Mhz */
-
 #define dprintk(msg...) cpufreq_debug_printk(CPUFREQ_DEBUG_CORE, \
 						"cpufreq-core", msg)
 
@@ -1104,12 +1102,14 @@ static int cpufreq_add_dev(struct sys_device *sys_dev)
 		    (cpumask_test_cpu(cpu, cp->related_cpus))) {
 			policy->min = cp->min;
 			policy->max = cp->max;
+			policy->max_suspend = cp->max_suspend;
 			break;
 		}
 	}
 #endif
 	policy->user_policy.min = policy->min;
 	policy->user_policy.max = policy->max;
+	policy->user_policy.max_suspend = policy->max_suspend;
 
 	blocking_notifier_call_chain(&cpufreq_policy_notifier_list,
 				     CPUFREQ_START, policy);
@@ -1804,7 +1804,7 @@ static int __cpufreq_set_policy(struct cpufreq_policy *data,
 	memcpy(&policy->cpuinfo, &data->cpuinfo,
 				sizeof(struct cpufreq_cpuinfo));
 
-	if (policy->min > data->max || policy->max < data->min) {
+	if (policy->min > data->max || policy->max < data->min || policy->max_suspend < data->min) {
 		ret = -EINVAL;
 		goto error_out;
 	}
@@ -1834,9 +1834,10 @@ static int __cpufreq_set_policy(struct cpufreq_policy *data,
 
 	data->min = policy->min;
 	data->max = policy->max;
+	data->max_suspend = policy->max_suspend;
 
-	dprintk("new min and max freqs are %u - %u kHz\n",
-					data->min, data->max);
+	dprintk("new min - max and max_suspend freqs are %u - %u and %u kHz\n",
+					data->min, data->max; data->max_suspend);
 
 	if (cpufreq_driver->setpolicy) {
 		data->policy = policy->policy;
@@ -1905,6 +1906,7 @@ int cpufreq_update_policy(unsigned int cpu)
 	memcpy(&policy, data, sizeof(struct cpufreq_policy));
 	policy.min = data->user_policy.min;
 	policy.max = data->user_policy.max;
+	policy.max_suspend = data->user_policy.max_suspend;
 	policy.policy = data->user_policy.policy;
 	policy.governor = data->user_policy.governor;
 

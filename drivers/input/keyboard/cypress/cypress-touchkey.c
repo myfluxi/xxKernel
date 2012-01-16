@@ -65,18 +65,28 @@
 #include <linux/wakelock.h>
 
 #define ENABLE_BL	1
-#define DISABLE_BL	0
 #define BL_ALWAYS_ON	-1
 #define BL_ALWAYS_OFF	-2
+#ifdef CONFIG_TARGET_CM_KERNEL
+#define DISABLE_BL	2
+#else
+#define DISABLE_BL	0
 #define BL_STANDARD	3000
 #define BLN_VERSION 10
+#endif
 
-int led_on = -1;
 int screen_on = 1;
+int notification_timeout = -1;  /* never time out */
+#ifdef CONFIG_TARGET_CM_KERNEL
+int led_on = 0;
+int led_timeout = BL_ALWAYS_ON; /* never time out */
+int notification_enabled = -1;  /* disabled by default */
+#else
+int led_on = -1;
 int led_timeout = BL_STANDARD;	/* leds on for 3 secs standard */
-int notification_timeout = -1;	/* never time out */
-int enabled = 0;		/* disabled by default */
+int notification_enabled = 0;	/* disabled by default */
 bool bln_blink_enabled = 0;
+#endif
 
 static struct wake_lock led_wake_lock;
 static DECLARE_MUTEX(enable_sem);
@@ -456,10 +466,18 @@ static void notification_off(struct work_struct *notification_off_work)
 	touchkey_ldo_on(0);	/* "touch" regulator */
 
 	/* turn off the backlight */
+#ifdef CONFIG_TARGET_CM_KERNEL
+	status = 2; /* light off */
+#else
 	status = 0; /* light off */
+#endif
 	i2c_touchkey_write((u8 *)&status, 1);
 	touchkey_enable = 0;
+#ifdef CONFIG_TARGET_CM_KERNEL
+	led_on = 0;
+#else
 	led_on = -1;
+#endif
 
 	/* we were using a wakelock, unlock it */
 	if (wake_lock_active(&led_wake_lock)) {
@@ -475,21 +493,20 @@ static void handle_notification_timeout(unsigned long data)
 	schedule_work(&notification_off_work);
 }
 
-static void enable_touchkey_backlights(void)
-{
-        int status = 1;
-        i2c_touchkey_write((u8 *)&status, 1);
-}
-
-static void disable_touchkey_backlights(void)
-{
-        int status = 2;
-        i2c_touchkey_write((u8 *)&status, 1);
-}
-
 static ssize_t led_status_read( struct device *dev, struct device_attribute *attr, char *buf )
 {
 	return sprintf(buf,"%u\n", led_on);
+}
+
+static ssize_t notification_enabled_read( struct device *dev, struct device_attribute *attr, char *buf )
+{
+	return sprintf(buf,"%d\n", notification_enabled);
+}
+
+static ssize_t notification_enabled_write( struct device *dev, struct device_attribute *attr, const char *buf, size_t size )
+{
+	sscanf(buf,"%d\n", &notification_enabled);
+	return size;
 }
 
 static ssize_t led_status_write( struct device *dev, struct device_attribute *attr, const char *buf, size_t size )
@@ -502,7 +519,7 @@ static ssize_t led_status_write( struct device *dev, struct device_attribute *at
 		switch (data) {
 		case ENABLE_BL:
 			printk(KERN_DEBUG "[LED] ENABLE_BL\n");
-			if (enabled > 0) {
+			if (notification_enabled > 0) {
 				/* we are using a wakelock, activate it */
 				if (!wake_lock_active(&led_wake_lock)) {
 					wake_lock(&led_wake_lock);
@@ -538,7 +555,11 @@ static ssize_t led_status_write( struct device *dev, struct device_attribute *at
 			if (led_on == 1) {
 
 				/* turn off the backlight */
+#ifdef CONFIG_TARGET_CM_KERNEL
+				status = 2; /* light off */
+#else
 				status = 0; /* light off */
+#endif
 				i2c_touchkey_write((u8 *)&status, 1);
 				led_on = 0;
 
@@ -581,15 +602,33 @@ static ssize_t led_timeout_write( struct device *dev, struct device_attribute *a
 	return size;
 }
 
-static ssize_t enabled_read( struct device *dev, struct device_attribute *attr, char *buf )
+#ifdef CONFIG_TARGET_CM_KERNEL
+static ssize_t notification_timeout_read( struct device *dev, struct device_attribute *attr, char *buf )
 {
-	return sprintf(buf,"%d\n", enabled);
+	return sprintf(buf,"%d\n", notification_timeout);
 }
 
-static ssize_t enabled_write( struct device *dev, struct device_attribute *attr, const char *buf, size_t size )
+static ssize_t notification_timeout_write( struct device *dev, struct device_attribute *attr, const char *buf, size_t size )
 {
-	sscanf(buf,"%d\n", &enabled);
+	sscanf(buf,"%d\n", &notification_timeout);
 	return size;
+}
+
+static DEVICE_ATTR(led, S_IRUGO | S_IWUGO, led_status_read, led_status_write );
+static DEVICE_ATTR(led_timeout, S_IRUGO | S_IWUGO, led_timeout_read, led_timeout_write );
+static DEVICE_ATTR(notification_timeout, S_IRUGO | S_IWUGO, notification_timeout_read, notification_timeout_write );
+static DEVICE_ATTR(notification_enabled, S_IRUGO | S_IWUGO, notification_enabled_read, notification_enabled_write );
+#else
+static void enable_touchkey_backlights(void)
+{
+        int status = 1;
+        i2c_touchkey_write((u8 *)&status, 1);
+}
+
+static void disable_touchkey_backlights(void)
+{
+        int status = 2;
+        i2c_touchkey_write((u8 *)&status, 1);
 }
 
 static ssize_t blink_control_read( struct device *dev, struct device_attribute *attr, char *buf )
@@ -625,17 +664,25 @@ static ssize_t version_read( struct device *dev, struct device_attribute *attr, 
 }
 
 static DEVICE_ATTR(blink_control, S_IRUGO | S_IWUGO, blink_control_read, blink_control_write );
-static DEVICE_ATTR(enabled, S_IRUGO | S_IWUGO, enabled_read, enabled_write );
+static DEVICE_ATTR(enabled, S_IRUGO | S_IWUGO, notification_enabled_read, notification_enabled_write );
 static DEVICE_ATTR(notification_led, S_IRUGO | S_IWUGO, led_status_read, led_status_write );
 static DEVICE_ATTR(led_timeout, S_IRUGO | S_IWUGO, led_timeout_read, led_timeout_write );
 static DEVICE_ATTR(version, S_IRUGO | S_IWUGO, version_read, NULL );
+#endif
 
 static struct attribute *bl_led_attributes[] = {
+#ifdef CONFIG_TARGET_CM_KERNEL
+	&dev_attr_led.attr,
+	&dev_attr_led_timeout.attr,
+	&dev_attr_notification_timeout.attr,
+	&dev_attr_notification_enabled.attr,
+#else
         &dev_attr_blink_control.attr,
         &dev_attr_enabled.attr,
         &dev_attr_notification_led.attr,
 	&dev_attr_led_timeout.attr,
         &dev_attr_version.attr,
+#endif
 	NULL
 };
 
@@ -645,7 +692,11 @@ static struct attribute_group bln_notification_group = {
 
 static struct miscdevice led_device = {
 	.minor = MISC_DYNAMIC_MINOR,
+#ifdef CONFIG_TARGET_CM_KERNEL
+	.name  = "notification",
+#else
 	.name  = "backlightnotification",
+#endif
 };
 
 /*
@@ -726,7 +777,11 @@ static int melfas_touchkey_late_resume(struct early_suspend *h)
 			wake_unlock(&led_wake_lock);
 		}
 		/* force DISABLE_BL to ignore the led state because we want it left on */
+#ifdef CONFIG_TARGET_CM_KERNEL
+		led_on = 0;
+#else
 		led_on = -1;
+#endif
 	}
 
 	if (led_timeout != BL_ALWAYS_OFF) {

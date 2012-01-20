@@ -104,11 +104,11 @@ static int g_nMajor;
 #endif
 
 /* timed_output */
-#define VIBRATOR_PERIOD		44643	/* 128 * 175 = 22.4KHz */
-#define VIBRATOR_DUTY		40178	/* 90% of period */
+#define VIBRATOR_PERIOD	38022	/* 128 * 205 = 26.240 */
+#define VIBRATOR_DUTY	34220	/* 90% of period */
 
-static const int vibrator_duty_levels[] = { 26000, 28000, 30000, 32000, 34000, 36000, 38000, 40000, 42000, 44000 };
-static int vibrator_level = 7;
+static const int vibrator_duty_levels[] = { 26000, 28000, 30000, 32000, 34000, 36000, 38000 };
+static int vibrator_level = 6;
 
 static void _set_vibetonz_work(struct work_struct *unused);
 

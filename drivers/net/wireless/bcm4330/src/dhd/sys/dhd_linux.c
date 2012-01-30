@@ -413,7 +413,14 @@ uint dhd_pkt_filter_init = 0;
 module_param(dhd_pkt_filter_init, uint, 0);
 
 /* Pkt filter mode control */
+
+#ifndef WHITELIST_PKT_FILTER
 uint dhd_master_mode = FALSE;
+#else
+char pkt_filter_cmd1[64];
+char pkt_filter_cmd2[64];
+uint dhd_master_mode = TRUE;
+#endif
 module_param(dhd_master_mode, uint, 1);
 
 #ifdef DHDTHREAD
@@ -1520,6 +1527,14 @@ dhd_rx_frame(dhd_pub_t *dhdp, int ifidx, void *pktbuf, int numpkt)
 		}
 #endif /* WLBTAMP */
 
+		/* Drop packets before registering net device to avoid kernel panic */
+		/* XXX Decide on a better way to avoid early packet */
+		if(!dhdp->netdev_registered){
+			DHD_ERROR(("%s: net devices is NOT registered yet. drop[%s] packet\n",
+							__FUNCTION__,(ntoh16(skb->protocol)==ETHER_TYPE_BRCM)?"event":"data"));
+			PKTFREE(dhdp->osh,pktbuf,TRUE);
+			continue;
+		}
 
 		ASSERT(ifidx < DHD_MAX_IFS && dhd->iflist[ifidx]);
 		if (dhd->iflist[ifidx] && !dhd->iflist[ifidx]->state)
@@ -2879,6 +2894,8 @@ dhd_net_attach(dhd_pub_t *dhdp, int ifidx)
 		DHD_ERROR(("couldn't register the net device, err %d\n", err));
 		goto fail;
 	}
+
+	dhdp->netdev_registered = TRUE;
 
 	printf("%s: Broadcom Dongle Host Driver MAC=%.2X:%.2X:%.2X:%.2X:%.2X:%.2X\n", net->name,
 	       dhd->pub.mac.octet[0], dhd->pub.mac.octet[1], dhd->pub.mac.octet[2],

@@ -2735,7 +2735,7 @@ wl_iw_get_range(
 	}
 	rateset.count = dtoh32(rateset.count);
 	range->num_bitrates = rateset.count;
-	for (i = 0; i < rateset.count && i < IW_MAX_BITRATES; i++)
+	for (i = 0; i < rateset.count && i < WL_NUMRATES; i++)
 		range->bitrate[i] = (rateset.rates[i]& 0x7f) * 500000; /* convert to bps */
 	dev_wlc_intvar_get(dev, "nmode", &nmode);
 	dev_wlc_ioctl(dev, WLC_GET_PHYTYPE, &phytype, sizeof(phytype));
@@ -4351,7 +4351,8 @@ wl_iw_get_scan_prep(
 				iwe.cmd = SIOCGIWRATE;
 				/* Those two flags are ignored... */
 				iwe.u.bitrate.fixed = iwe.u.bitrate.disabled = 0;
-				for (j = 0; j < bi->rateset.count && j < IW_MAX_BITRATES; j++) {
+				for (j = 0; j < bi->rateset.count &&
+							j < WL_NUMRATES; j++) {
 					iwe.u.bitrate.value =
 						(bi->rateset.rates[j] & 0x7f) * 500000;
 					value = IWE_STREAM_ADD_VALUE(info, event, value, end, &iwe,
@@ -4751,7 +4752,8 @@ wl_iw_iscan_get_scan(
 			iwe.cmd = SIOCGIWRATE;
 			/* Those two flags are ignored... */
 			iwe.u.bitrate.fixed = iwe.u.bitrate.disabled = 0;
-			for (j = 0; j < bi->rateset.count && j < IW_MAX_BITRATES; j++) {
+			for (j = 0; j < bi->rateset.count &&
+						 j < WL_NUMRATES; j++) {
 					iwe.u.bitrate.value =
 					        (bi->rateset.rates[j] & 0x7f) * 500000;
 				value = IWE_STREAM_ADD_VALUE(info, event, value, end, &iwe,
@@ -7061,9 +7063,10 @@ set_ap_cfg(struct net_device *dev, struct ap_profile *ap)
 		} 
 #endif /* AP_ONLY */
 
-           /*  WMM and ARP offloading disable  */
-          dev_wlc_intvar_set(dev, "wme", 0);
-          dev_wlc_intvar_set(dev, "arpoe", 0);
+		/*  WMM and ARP offloading disable  */
+		dev_wlc_intvar_set(dev, "wme", 0);
+		dev_wlc_intvar_set(dev, "arpoe", 0);
+		dev_wlc_intvar_set(dev, "vlan_mode", 0);
 
 		updown = 1;
 		if ((res = dev_wlc_ioctl(dev, WLC_UP, &updown, sizeof(updown))) < 0) {

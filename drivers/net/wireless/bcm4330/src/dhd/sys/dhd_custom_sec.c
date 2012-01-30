@@ -416,13 +416,17 @@ int check_module_cid(dhd_pub_t *dhd)
 	if (ret < 0) {
 		DHD_ERROR(("%s: CIS reading failed, err=%d\n", __FUNCTION__, ret));
 	} else {
-		unsigned char id[4] = {0x80, 0x06, 0x81, 0x00};
+		unsigned char murata_id[4] = {0x80, 0x06, 0x81, 0x00};
+		unsigned char semco_ve[4] = {0x80, 0x02, 0x81, 0x99};
 #ifdef DUMP_CIS
 		dump_cis(cis_buf, 48);
 #endif
-		if (memcmp(&cis_buf[CIS_CID_OFFSET], id, 4) == 0) {
-			DHD_ERROR(("CID MATCH FOUND\n"));
+		if (memcmp(&cis_buf[CIS_CID_OFFSET], murata_id, 4) == 0) {
+			DHD_ERROR(("CID MATCH FOUND : Murata\n"));
 			write_cid_file(cidfilepath, "murata", 6);
+		} else if (memcmp(&cis_buf[CIS_CID_OFFSET], semco_ve, 4) == 0) {
+			DHD_ERROR(("CID MATCH FOUND : Semco VE\n"));
+			write_cid_file(cidfilepath, "semcove", 7);
 		} else {
 			DHD_ERROR(("CID MISMATCH 0x%02X 0x%02X 0x%02X 0x%02X\n", 
 				cis_buf[CIS_CID_OFFSET], cis_buf[CIS_CID_OFFSET+1], 

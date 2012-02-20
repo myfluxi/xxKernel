@@ -25,8 +25,6 @@
 #include <linux/notifier.h>
 #include <linux/earlysuspend.h>
 
-#define CPUMON 0
-
 /*
  * dbs is used in this file as a shortform for demandbased switching
  * It helps to keep variable names smaller, simpler
@@ -34,7 +32,7 @@
 
 #define DEF_FREQUENCY_DOWN_DIFFERENTIAL		(5)
 #define DEF_FREQUENCY_UP_THRESHOLD		(85)
-#define DEF_SUSPEND_FREQUENCY_UP_THRESHOLD	(98)
+#define DEF_SUSPEND_FREQUENCY_UP_THRESHOLD	(100)
 #define DEF_SAMPLING_DOWN_FACTOR		(1)
 #define MAX_SAMPLING_DOWN_FACTOR		(100000)
 #define MICRO_FREQUENCY_DOWN_DIFFERENTIAL	(3)
@@ -42,7 +40,7 @@
 #define MICRO_FREQUENCY_MIN_SAMPLE_RATE		(10000)
 #define MIN_FREQUENCY_UP_THRESHOLD		(11)
 #define MAX_FREQUENCY_UP_THRESHOLD		(100)
-#define DEF_SUSPEND_POWERSAVE_BIAS		(500)
+#define DEF_SUSPEND_POWERSAVE_BIAS		(400)
 
 /*
  * The polling frequency of this governor depends on the capability of
@@ -54,7 +52,7 @@
  * this governor will not work.
  * All times here are in uS.
  */
-#define MIN_SAMPLING_RATE_RATIO			(2)
+#define MIN_SAMPLING_RATE_RATIO			(1)
 
 static unsigned int min_sampling_rate;
 
@@ -504,10 +502,6 @@ static void dbs_check_cpu(struct cpu_dbs_info_s *this_dbs_info)
 	/* Get Absolute Load - in terms of freq */
 	max_load_freq = 0;
 
-#if CPUMON
-	int load_each[2] = {0, 0};
-#endif
-
 	for_each_cpu(j, policy->cpus) {
 		struct cpu_dbs_info_s *j_dbs_info;
 		cputime64_t cur_wall_time, cur_idle_time, cur_iowait_time;
@@ -563,9 +557,6 @@ static void dbs_check_cpu(struct cpu_dbs_info_s *this_dbs_info)
 			continue;
 
 		load = 100 * (wall_time - idle_time) / wall_time;
-#if CPUMON
-		load_each[j & 0x01] = load;
-#endif
 
 		freq_avg = __cpufreq_driver_getavg(policy, j);
 		if (freq_avg <= 0)
@@ -575,10 +566,6 @@ static void dbs_check_cpu(struct cpu_dbs_info_s *this_dbs_info)
 		if (load_freq > max_load_freq)
 			max_load_freq = load_freq;
 	}
-
-#if CPUMON
-	printk(KERN_ERR "CPUMON L %d %d\n", load_each[0], load_each[1]);
-#endif
 
 	/* Check for frequency increase */
 	if (max_load_freq > dbs_tuners_ins.up_threshold * policy->cur) {

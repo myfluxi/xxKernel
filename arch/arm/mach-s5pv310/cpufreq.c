@@ -1966,7 +1966,8 @@ static int s5pv310_cpufreq_cpu_init(struct cpufreq_policy *policy)
 {
 	printk(KERN_DEBUG "++ %s\n", __func__);
 
-	policy->cur = policy->min = policy->max = policy->max_suspend = s5pv310_getspeed(policy->cpu);
+	policy->cur = policy->min = policy->max = policy->max_suspend =
+			policy->min_suspend = s5pv310_getspeed(policy->cpu);
 
 	cpufreq_frequency_table_get_attr(s5pv310_freq_table, policy->cpu);
 
@@ -1991,10 +1992,11 @@ static int s5pv310_cpufreq_cpu_init(struct cpufreq_policy *policy)
 	policy->max = 1200000;
 	policy->min = 200000;
 
-	/* set default max suspend frequency
+	/* set default min and max suspend frequency
 	 * can be passed to any governor - fluxi
 	*/
 	policy->max_suspend = 500000;
+	policy->min_suspend = 200000;
 
 	return 0;
 }

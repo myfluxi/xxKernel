@@ -468,6 +468,7 @@ show_one(cpuinfo_min_freq, cpuinfo.min_freq);
 show_one(cpuinfo_max_freq, cpuinfo.max_freq);
 show_one(cpuinfo_transition_latency, cpuinfo.transition_latency);
 show_one(scaling_min_freq, min);
+show_one(scaling_min_suspend_freq, min_suspend);
 show_one(scaling_max_freq, max);
 show_one(scaling_max_suspend_freq, max_suspend);
 show_one(scaling_cur_freq, cur);
@@ -500,6 +501,7 @@ static ssize_t store_##file_name					\
 }
 
 store_one(scaling_min_freq, min);
+store_one(scaling_min_suspend_freq, min_suspend);
 store_one(scaling_max_freq, max);
 store_one(scaling_max_suspend_freq, max_suspend);
 
@@ -726,6 +728,7 @@ cpufreq_freq_attr_ro(bios_limit);
 cpufreq_freq_attr_ro(related_cpus);
 cpufreq_freq_attr_ro(affected_cpus);
 cpufreq_freq_attr_rw(scaling_min_freq);
+cpufreq_freq_attr_rw(scaling_min_suspend_freq);
 cpufreq_freq_attr_rw(scaling_max_freq);
 cpufreq_freq_attr_rw(scaling_max_suspend_freq);
 cpufreq_freq_attr_rw(scaling_governor);
@@ -738,6 +741,7 @@ static struct attribute *default_attrs[] = {
 	&cpuinfo_max_freq.attr,
 	&cpuinfo_transition_latency.attr,
 	&scaling_min_freq.attr,
+	&scaling_min_suspend_freq.attr,
 	&scaling_max_freq.attr,
 	&scaling_max_suspend_freq.attr,
 	&affected_cpus.attr,
@@ -1101,6 +1105,7 @@ static int cpufreq_add_dev(struct sys_device *sys_dev)
 		if (cp && cp->governor &&
 		    (cpumask_test_cpu(cpu, cp->related_cpus))) {
 			policy->min = cp->min;
+			policy->min_suspend = cp->min_suspend;
 			policy->max = cp->max;
 			policy->max_suspend = cp->max_suspend;
 			break;
@@ -1108,6 +1113,7 @@ static int cpufreq_add_dev(struct sys_device *sys_dev)
 	}
 #endif
 	policy->user_policy.min = policy->min;
+	policy->user_policy.min_suspend = policy->min_suspend;
 	policy->user_policy.max = policy->max;
 	policy->user_policy.max_suspend = policy->max_suspend;
 
@@ -1833,11 +1839,14 @@ static int __cpufreq_set_policy(struct cpufreq_policy *data,
 			CPUFREQ_NOTIFY, policy);
 
 	data->min = policy->min;
+	data->min_suspend = policy->min_suspend;
 	data->max = policy->max;
 	data->max_suspend = policy->max_suspend;
 
-	dprintk("new min - max and max_suspend freqs are %u - %u and %u kHz\n",
-					data->min, data->max; data->max_suspend);
+	dprintk("new min and max freqs are %u - %u kHz\n",
+					data->min, data->max);
+	dprintk("new min_suspend - max_suspend freqs are %u - %u kHz\n",
+					data->min_suspend, data->max_suspend);
 
 	if (cpufreq_driver->setpolicy) {
 		data->policy = policy->policy;
@@ -1905,6 +1914,7 @@ int cpufreq_update_policy(unsigned int cpu)
 	dprintk("updating policy for CPU %u\n", cpu);
 	memcpy(&policy, data, sizeof(struct cpufreq_policy));
 	policy.min = data->user_policy.min;
+	policy.min_suspend = data->user_policy.min_suspend;
 	policy.max = data->user_policy.max;
 	policy.max_suspend = data->user_policy.max_suspend;
 	policy.policy = data->user_policy.policy;
@@ -2088,7 +2098,7 @@ static void powersave_early_suspend(struct early_suspend *handler)
 		if (cpufreq_get_policy(&new_policy, cpu))
 			goto out;
 		new_policy.max = cpu_policy->max_suspend;
-		new_policy.min = cpu_policy->cpuinfo.min_freq;
+		new_policy.min = cpu_policy->min_suspend;
 		printk(KERN_INFO
 			"%s: set cpu%d freq in the %u-%u KHz range\n",
 			__func__, cpu, new_policy.min, new_policy.max);

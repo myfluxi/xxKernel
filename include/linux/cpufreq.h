@@ -77,6 +77,7 @@ struct cpufreq_cpuinfo {
 
 struct cpufreq_real_policy {
 	unsigned int		min;    /* in kHz */
+	unsigned int		min_suspend;	/* in kHz */
 	unsigned int		max;    /* in kHz */
 	unsigned int		max_suspend;	/* in kHz */
         unsigned int		policy; /* see above */
@@ -92,6 +93,7 @@ struct cpufreq_policy {
 	struct cpufreq_cpuinfo	cpuinfo;/* see above */
 
 	unsigned int		min;    /* in kHz */
+	unsigned int		min_suspend;	/* in kHz */
 	unsigned int		max;    /* in kHz */
 	unsigned int		max_suspend;	/* in kHz */
 	unsigned int		cur;    /* in kHz, only needed if cpufreq

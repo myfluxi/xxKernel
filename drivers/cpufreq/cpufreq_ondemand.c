@@ -141,11 +141,12 @@ static void suspend_ondemand(int suspend)
 
         if (!suspend) {
                 ondemanded_suspend = 0;
+		__cpufreq_driver_target(dbs_info->cur_policy, dbs_info->cur_policy->max, 
+			CPUFREQ_RELATION_L);
 		dbs_tuners_ins.powersave_bias = dbs_tuners_ins.def_powersave_bias;
 		dbs_tuners_ins.up_threshold = dbs_tuners_ins.def_up_threshold;
         } else {
                 ondemanded_suspend = 1;
-		__cpufreq_driver_target(dbs_info->cur_policy, dbs_info->cur_policy->max_suspend, CPUFREQ_RELATION_H);
 		dbs_tuners_ins.powersave_bias = dbs_tuners_ins.suspend_powersave_bias;
 		dbs_tuners_ins.up_threshold = dbs_tuners_ins.suspend_up_threshold;
         }
@@ -671,8 +672,6 @@ static inline void dbs_timer_init(struct cpu_dbs_info_s *dbs_info)
 {
 	/* We want all CPUs to do sampling nearly on same jiffy */
 	int delay = usecs_to_jiffies(dbs_tuners_ins.sampling_rate);
-
-	delay = usecs_to_jiffies(40 * 1000000);
 
 	dbs_info->sample_type = DBS_NORMAL_SAMPLE;
 	INIT_DELAYED_WORK_DEFERRABLE(&dbs_info->work, do_dbs_timer);
